@@ -1,7 +1,7 @@
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -48,18 +48,22 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchOrders();
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchOrders();
+    }, [user])
+  );
 
   async function fetchOrders() {
-    if (!user) return;
+    if (!user) { setLoading(false); return; }
+    setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/orders?userId=${user.id}`);
       const data = await res.json();
-      setOrders(data);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (e) {
       console.log("Error fetching orders", e);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -100,6 +104,8 @@ export default function OrdersScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad + 100 }]}
           showsVerticalScrollIndicator={false}
+          onRefresh={fetchOrders}
+          refreshing={loading}
           renderItem={({ item }) => {
             const statusCfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.confirmed;
             return (
@@ -140,154 +146,51 @@ export default function OrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.backgroundSecondary,
-  },
+  container: { flex: 1, backgroundColor: Colors.light.backgroundSecondary },
   header: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.borderLight,
+    backgroundColor: "#fff", paddingHorizontal: 16, paddingBottom: 16,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-  },
-  headerCount: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-  },
-  listContent: {
-    padding: 16,
-    gap: 12,
-  },
+  headerTitle: { fontSize: 24, fontFamily: "Inter_700Bold", color: Colors.light.text },
+  headerCount: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
+  listContent: { padding: 16, gap: 12 },
   orderCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: "#fff", borderRadius: 16, padding: 16,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
     gap: 12,
   },
-  orderHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  orderId: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.textSecondary,
-  },
+  orderHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  orderId: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.textSecondary },
   statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
   },
-  statusText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-  },
-  orderContent: {
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "center",
-  },
+  statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  orderContent: { flexDirection: "row", gap: 12, alignItems: "center" },
   productImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 10,
-    backgroundColor: Colors.light.backgroundSecondary,
+    width: 72, height: 72, borderRadius: 10, backgroundColor: Colors.light.backgroundSecondary,
   },
-  orderInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  productBrand: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.tint,
-    textTransform: "uppercase",
-  },
-  productName: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.text,
-    lineHeight: 20,
-  },
-  quantityText: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-  },
+  orderInfo: { flex: 1, gap: 3 },
+  productBrand: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.light.tint, textTransform: "uppercase" },
+  productName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.light.text, lineHeight: 20 },
+  quantityText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
   orderFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.borderLight,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.light.borderLight,
   },
-  dateText: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textMuted,
-  },
-  totalPrice: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: 40,
-  },
+  dateText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.light.textMuted },
+  totalPrice: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.light.text },
+  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 40 },
   emptyIcon: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: Colors.light.backgroundSecondary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
+    width: 90, height: 90, borderRadius: 45,
+    backgroundColor: Colors.light.backgroundSecondary, alignItems: "center", justifyContent: "center", marginBottom: 8,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-    textAlign: "center",
-  },
+  emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.light.text },
+  emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary, textAlign: "center" },
   shopBtn: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    marginTop: 8,
+    backgroundColor: Colors.light.tint, borderRadius: 12,
+    paddingVertical: 14, paddingHorizontal: 32, marginTop: 8,
   },
-  shopBtnText: {
-    color: "#fff",
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
+  shopBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
 });

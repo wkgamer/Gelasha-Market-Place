@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -17,9 +17,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useAuth, SignUpData } from "@/context/AuthContext";
 
-const APP_USAGES = ["Manufacturing", "Construction", "Agriculture", "Mining", "Transport", "Chemical", "Food Processing", "Other"];
-const FUEL_TYPES = ["Diesel", "Petrol", "Electric", "CNG", "LPG", "Other"];
-
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -29,7 +26,6 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Step 1
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +33,6 @@ export default function RegisterScreen() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Step 2
   const [siteName, setSiteName] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
   const [transportAddress, setTransportAddress] = useState("");
@@ -46,9 +41,7 @@ export default function RegisterScreen() {
   const [mobile1, setMobile1] = useState("");
   const [mobile2, setMobile2] = useState("");
 
-  // Step 3
-  const [appUsage, setAppUsage] = useState("");
-  const [fuelType, setFuelType] = useState("");
+  const [additionalInfo, setAdditionalInfo] = useState("");
 
   function validateStep1() {
     if (!username.trim()) return "Username is required";
@@ -92,8 +85,8 @@ export default function RegisterScreen() {
         gstNumber: gstNumber.trim(),
         mobile1: mobile1.trim(),
         mobile2: mobile2.trim(),
-        appUsage: appUsage,
-        fuelType: fuelType,
+        appUsage: additionalInfo.trim(),
+        fuelType: "",
       };
       await signUp(data);
       router.replace("/(tabs)");
@@ -104,7 +97,7 @@ export default function RegisterScreen() {
     }
   }
 
-  const steps = ["Personal", "Business", "Optional"];
+  const steps = ["Personal", "Business", "Details"];
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -119,7 +112,6 @@ export default function RegisterScreen() {
 
         <Text style={styles.title}>Create Account</Text>
 
-        {/* Step Indicators */}
         <View style={styles.stepIndicator}>
           {steps.map((s, i) => (
             <React.Fragment key={s}>
@@ -147,7 +139,6 @@ export default function RegisterScreen() {
           </View>
         ) : null}
 
-        {/* Step 1: Personal Info */}
         {step === 1 && (
           <View style={styles.form}>
             <InputField label="Full Name *" icon="person-outline" value={username} onChangeText={setUsername} placeholder="Your full name" />
@@ -189,13 +180,12 @@ export default function RegisterScreen() {
           </View>
         )}
 
-        {/* Step 2: Business Info */}
         {step === 2 && (
           <View style={styles.form}>
             <InputField label="Site / Company Name *" icon="business-outline" value={siteName} onChangeText={setSiteName} placeholder="Your business name" />
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Site Address *</Text>
-              <View style={[styles.inputWrapper, { height: 80, alignItems: "flex-start", paddingVertical: 12 }]}>
+              <View style={[styles.inputWrapper, { height: 90, alignItems: "flex-start", paddingVertical: 12 }]}>
                 <Ionicons name="location-outline" size={18} color={Colors.light.textMuted} style={[styles.inputIcon, { marginTop: 2 }]} />
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
@@ -210,7 +200,7 @@ export default function RegisterScreen() {
             </View>
             <View style={styles.inputGroup}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>Transport Address *</Text>
+                <Text style={styles.label}>Transport Address</Text>
                 <View style={styles.copyRow}>
                   <Text style={styles.copyLabel}>Same as site</Text>
                   <Switch
@@ -224,7 +214,7 @@ export default function RegisterScreen() {
                   />
                 </View>
               </View>
-              <View style={[styles.inputWrapper, { height: 80, alignItems: "flex-start", paddingVertical: 12, opacity: copyAddress ? 0.6 : 1 }]}>
+              <View style={[styles.inputWrapper, { height: 90, alignItems: "flex-start", paddingVertical: 12, opacity: copyAddress ? 0.6 : 1 }]}>
                 <Ionicons name="navigate-outline" size={18} color={Colors.light.textMuted} style={[styles.inputIcon, { marginTop: 2 }]} />
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
@@ -244,37 +234,29 @@ export default function RegisterScreen() {
           </View>
         )}
 
-        {/* Step 3: Optional */}
         {step === 3 && (
           <View style={styles.form}>
-            <Text style={styles.sectionNote}>These details help us show relevant products (optional)</Text>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Where do you use it?</Text>
-              <View style={styles.chipGrid}>
-                {APP_USAGES.map((u) => (
-                  <Pressable
-                    key={u}
-                    style={[styles.chip, appUsage === u && styles.chipActive]}
-                    onPress={() => setAppUsage(appUsage === u ? "" : u)}
-                  >
-                    <Text style={[styles.chipText, appUsage === u && styles.chipTextActive]}>{u}</Text>
-                  </Pressable>
-                ))}
-              </View>
+            <View style={styles.infoBox}>
+              <Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.light.tint} />
+              <Text style={styles.infoBoxText}>
+                Tell us about your business requirements, preferred products, or any specific needs. This helps us personalize your experience.
+              </Text>
             </View>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>What fuel do you use?</Text>
-              <View style={styles.chipGrid}>
-                {FUEL_TYPES.map((f) => (
-                  <Pressable
-                    key={f}
-                    style={[styles.chip, fuelType === f && styles.chipActive]}
-                    onPress={() => setFuelType(fuelType === f ? "" : f)}
-                  >
-                    <Text style={[styles.chipText, fuelType === f && styles.chipTextActive]}>{f}</Text>
-                  </Pressable>
-                ))}
+              <Text style={styles.label}>Your Message / Requirements (Optional)</Text>
+              <View style={[styles.inputWrapper, styles.chatBox]}>
+                <TextInput
+                  style={[styles.input, styles.chatInput]}
+                  placeholder={"E.g. We need industrial pumps for mining operations, prefer diesel-powered equipment, looking for bulk pricing...\n\nFeel free to describe your business needs in detail."}
+                  placeholderTextColor={Colors.light.textMuted}
+                  value={additionalInfo}
+                  onChangeText={setAdditionalInfo}
+                  multiline
+                  numberOfLines={8}
+                  textAlignVertical="top"
+                />
               </View>
+              <Text style={styles.charCount}>{additionalInfo.length} characters</Text>
             </View>
           </View>
         )}
@@ -318,7 +300,7 @@ export default function RegisterScreen() {
 
 function InputField({
   label, icon, value, onChangeText, placeholder,
-  keyboardType, autoCapitalize, multiline
+  keyboardType, autoCapitalize
 }: {
   label: string;
   icon: string;
@@ -327,12 +309,11 @@ function InputField({
   placeholder: string;
   keyboardType?: any;
   autoCapitalize?: any;
-  multiline?: boolean;
 }) {
   return (
     <View style={styles.inputGroup}>
       <Text style={styles.label}>{label}</Text>
-      <View style={[styles.inputWrapper, multiline && { height: 80, alignItems: "flex-start", paddingVertical: 12 }]}>
+      <View style={styles.inputWrapper}>
         <Ionicons name={icon as any} size={18} color={Colors.light.textMuted} style={styles.inputIcon} />
         <TextInput
           style={[styles.input, { flex: 1 }]}
@@ -342,7 +323,6 @@ function InputField({
           onChangeText={onChangeText}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize || "words"}
-          multiline={multiline}
         />
       </View>
     </View>
@@ -440,14 +420,22 @@ const styles = StyleSheet.create({
   form: {
     gap: 16,
   },
-  sectionNote: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
     backgroundColor: Colors.light.tintUltraLight,
-    borderRadius: 10,
-    padding: 12,
-    textAlign: "center",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.light.tintLight,
+  },
+  infoBoxText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.tintDark,
+    lineHeight: 20,
   },
   inputGroup: {
     gap: 8,
@@ -482,6 +470,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 52,
   },
+  chatBox: {
+    height: 200,
+    alignItems: "flex-start",
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  chatInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.text,
+    lineHeight: 22,
+    textAlignVertical: "top",
+  },
+  charCount: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textMuted,
+    textAlign: "right",
+  },
   inputIcon: {
     marginRight: 10,
   },
@@ -489,31 +497,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_400Regular",
     color: Colors.light.text,
-  },
-  chipGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  chip: {
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderWidth: 1.5,
-    borderColor: Colors.light.border,
-    backgroundColor: "#fff",
-  },
-  chipActive: {
-    borderColor: Colors.light.tint,
-    backgroundColor: Colors.light.tintUltraLight,
-  },
-  chipText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.textSecondary,
-  },
-  chipTextActive: {
-    color: Colors.light.tintDark,
   },
   buttonRow: {
     marginTop: 28,

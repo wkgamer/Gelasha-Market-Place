@@ -105,11 +105,6 @@ export default function SignInScreen() {
             </View>
           </View>
 
-          <View style={styles.testCredentials}>
-            <Ionicons name="information-circle-outline" size={14} color={Colors.light.tint} />
-            <Text style={styles.testText}>Test: test@gelasha.com / test123</Text>
-          </View>
-
           <Pressable
             style={({ pressed }) => [styles.primaryBtn, { opacity: pressed || loading ? 0.85 : 1 }]}
             onPress={handleSignIn}
@@ -210,20 +205,6 @@ const styles = StyleSheet.create({
   },
   eyeBtn: {
     padding: 4,
-  },
-  testCredentials: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.light.tintUltraLight,
-    borderRadius: 8,
-    padding: 10,
-    marginTop: -8,
-  },
-  testText: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.tintDark,
   },
   primaryBtn: {
     backgroundColor: Colors.light.tint,

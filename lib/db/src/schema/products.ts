@@ -1,6 +1,13 @@
-import { boolean, integer, numeric, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, json, numeric, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+
+export interface ProductVariant {
+  id: string;
+  name: string;
+  price: number;
+  image?: string;
+}
 
 export const productsTable = pgTable("products", {
   id: text("id").primaryKey(),
@@ -16,6 +23,7 @@ export const productsTable = pgTable("products", {
   inStock: boolean("in_stock").notNull().default(true),
   brand: varchar("brand", { length: 255 }).notNull(),
   discount: integer("discount").default(0),
+  variants: json("variants").$type<ProductVariant[]>().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

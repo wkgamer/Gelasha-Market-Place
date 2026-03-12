@@ -1,4 +1,4 @@
-import { Ionicons, Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
@@ -13,6 +13,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +22,13 @@ import { useAuth } from "@/context/AuthContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+
+interface ProductVariant {
+  id: string;
+  name: string;
+  price: number;
+  image?: string;
+}
 
 interface Product {
   id: string;
@@ -36,6 +44,7 @@ interface Product {
   inStock: boolean;
   brand: string;
   discount?: number;
+  variants: ProductVariant[];
 }
 
 export default function ProductDetailScreen() {
@@ -50,9 +59,13 @@ export default function ProductDetailScreen() {
   const [liked, setLiked] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [purchased, setPurchased] = useState(false);
-  const [quantity, setQuantity] = useState(1);
+  const [quantityText, setQuantityText] = useState("1");
   const [activeImage, setActiveImage] = useState(0);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const imageListRef = useRef<FlatList>(null);
+
+  const quantity = parseInt(quantityText, 10) || 1;
+  const effectivePrice = selectedVariant ? selectedVariant.price : product?.price ?? 0;
 
   useEffect(() => {
     fetchProduct();
@@ -100,21 +113,29 @@ export default function ProductDetailScreen() {
 
   async function handlePurchase() {
     if (!user || !product) return;
+    const qty = Math.max(1, quantity);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setPurchasing(true);
     try {
       const res = await fetch(`${API_BASE}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, productId: product.id, quantity }),
+        body: JSON.stringify({
+          userId: user.id,
+          productId: product.id,
+          quantity: qty,
+        }),
       });
       if (res.ok) {
         setPurchased(true);
         if (Platform.OS !== "web") {
           Alert.alert(
             "Order Placed!",
-            `Your order for ${product.name} (Qty: ${quantity}) has been confirmed.`,
-            [{ text: "View Orders", onPress: () => { router.dismiss(); router.replace("/(tabs)/orders"); } }, { text: "Continue Shopping", onPress: () => router.dismiss() }]
+            `Your order for ${product.name}${selectedVariant ? ` (${selectedVariant.name})` : ""} × ${qty} has been confirmed.`,
+            [
+              { text: "View Orders", onPress: () => { router.dismiss(); router.replace("/(tabs)/orders"); } },
+              { text: "Continue Shopping", onPress: () => router.dismiss() },
+            ]
           );
         }
       }
@@ -127,6 +148,32 @@ export default function ProductDetailScreen() {
 
   function formatPrice(price: number) {
     return `₹${price.toLocaleString("en-IN")}`;
+  }
+
+  function handleVariantSelect(variant: ProductVariant) {
+    if (Platform.OS !== "web") Haptics.selectionAsync();
+    if (selectedVariant?.id === variant.id) {
+      setSelectedVariant(null);
+    } else {
+      setSelectedVariant(variant);
+      if (variant.image) {
+        const allImgs = getAllImages();
+        const idx = allImgs.indexOf(variant.image);
+        if (idx >= 0) {
+          setActiveImage(idx);
+          imageListRef.current?.scrollToIndex({ index: idx, animated: true });
+        }
+      }
+    }
+  }
+
+  function getAllImages(): string[] {
+    if (!product) return [];
+    const base = product.images.length > 0 ? product.images : [product.imageUrl];
+    const variantImgs = (product.variants || [])
+      .filter((v) => v.image && !base.includes(v.image))
+      .map((v) => v.image!);
+    return [...base, ...variantImgs];
   }
 
   if (loading) {
@@ -145,8 +192,10 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const allImages = product.images.length > 0 ? product.images : [product.imageUrl];
-  const savings = product.originalPrice ? product.originalPrice - product.price : 0;
+  const allImages = getAllImages();
+  const savings = product.originalPrice ? product.originalPrice - effectivePrice : 0;
+  const totalAmount = effectivePrice * quantity;
+  const hasVariants = product.variants && product.variants.length > 0;
 
   return (
     <View style={styles.container}>
@@ -169,7 +218,6 @@ export default function ProductDetailScreen() {
             )}
           />
 
-          {/* Top Controls */}
           <View style={[styles.imageControls, { top: topPad + 12 }]}>
             <Pressable style={styles.controlBtn} onPress={() => router.dismiss()}>
               <Ionicons name="arrow-back" size={22} color={Colors.light.text} />
@@ -183,7 +231,6 @@ export default function ProductDetailScreen() {
             </Pressable>
           </View>
 
-          {/* Image Dots */}
           {allImages.length > 1 && (
             <View style={styles.imageDots}>
               {allImages.map((_, i) => (
@@ -192,7 +239,6 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* Discount Badge */}
           {product.discount ? (
             <View style={styles.discountBadge}>
               <Text style={styles.discountText}>{product.discount}% OFF</Text>
@@ -202,7 +248,6 @@ export default function ProductDetailScreen() {
 
         {/* Product Info */}
         <View style={styles.contentSection}>
-          {/* Category & Brand */}
           <View style={styles.tagRow}>
             <View style={styles.categoryTag}>
               <Text style={styles.categoryTagText}>{product.category}</Text>
@@ -210,10 +255,8 @@ export default function ProductDetailScreen() {
             <Text style={styles.brandText}>{product.brand}</Text>
           </View>
 
-          {/* Name */}
           <Text style={styles.productName}>{product.name}</Text>
 
-          {/* Rating */}
           <View style={styles.ratingRow}>
             <View style={styles.ratingStars}>
               {[1, 2, 3, 4, 5].map((star) => (
@@ -231,17 +274,58 @@ export default function ProductDetailScreen() {
 
           {/* Price */}
           <View style={styles.priceSection}>
-            <Text style={styles.price}>{formatPrice(product.price)}</Text>
-            {product.originalPrice && (
+            <Text style={styles.price}>{formatPrice(effectivePrice)}</Text>
+            {product.originalPrice && !selectedVariant && (
               <Text style={styles.originalPrice}>{formatPrice(product.originalPrice)}</Text>
             )}
-            {savings > 0 && (
+            {savings > 0 && !selectedVariant && (
               <View style={styles.savingsBadge}>
                 <Ionicons name="pricetag" size={11} color="#22C55E" />
                 <Text style={styles.savingsText}>Save {formatPrice(savings)}</Text>
               </View>
             )}
+            {selectedVariant && (
+              <View style={[styles.savingsBadge, { backgroundColor: Colors.light.tintUltraLight }]}>
+                <Text style={[styles.savingsText, { color: Colors.light.tintDark }]}>{selectedVariant.name}</Text>
+              </View>
+            )}
           </View>
+
+          {/* Variants */}
+          {hasVariants && (
+            <View style={styles.variantsSection}>
+              <Text style={styles.variantsLabel}>
+                Choose Variant {selectedVariant ? `— ${selectedVariant.name}` : ""}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.variantsList}>
+                {product.variants.map((variant) => {
+                  const isSelected = selectedVariant?.id === variant.id;
+                  return (
+                    <Pressable
+                      key={variant.id}
+                      style={[styles.variantChip, isSelected && styles.variantChipActive]}
+                      onPress={() => handleVariantSelect(variant)}
+                    >
+                      {variant.image ? (
+                        <Image source={{ uri: variant.image }} style={styles.variantThumb} contentFit="cover" />
+                      ) : null}
+                      <View style={styles.variantInfo}>
+                        <Text style={[styles.variantName, isSelected && styles.variantNameActive]}>
+                          {variant.name}
+                        </Text>
+                        <Text style={[styles.variantPrice, isSelected && styles.variantPriceActive]}>
+                          {formatPrice(variant.price)}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <Ionicons name="checkmark-circle" size={16} color={Colors.light.tint} style={{ marginLeft: 6 }} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Stock Status */}
           <View style={[styles.stockRow, { backgroundColor: product.inStock ? "#F0FDF4" : "#FEF2F2" }]}>
@@ -251,53 +335,52 @@ export default function ProductDetailScreen() {
               color={product.inStock ? "#22C55E" : Colors.light.error}
             />
             <Text style={[styles.stockText, { color: product.inStock ? "#22C55E" : Colors.light.error }]}>
-              {product.inStock ? "In Stock - Ready to Ship" : "Currently Out of Stock"}
+              {product.inStock ? "In Stock — Ready to Ship" : "Currently Out of Stock"}
             </Text>
           </View>
 
-          {/* Quantity */}
+          {/* Quantity & Amount */}
           {product.inStock && (
             <View style={styles.quantitySection}>
-              <Text style={styles.quantityLabel}>Quantity</Text>
-              <View style={styles.quantityControls}>
+              <Text style={styles.quantityLabel}>Quantity & Purchase Amount</Text>
+              <View style={styles.quantityRow}>
                 <Pressable
                   style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
-                  onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                  onPress={() => setQuantityText(String(Math.max(1, quantity - 1)))}
                 >
-                  <Ionicons name="remove" size={18} color={quantity <= 1 ? Colors.light.textMuted : Colors.light.text} />
+                  <Ionicons name="remove" size={20} color={quantity <= 1 ? Colors.light.textMuted : Colors.light.text} />
                 </Pressable>
-                <Text style={styles.qtyNum}>{quantity}</Text>
+                <TextInput
+                  style={styles.qtyInput}
+                  value={quantityText}
+                  onChangeText={(v) => {
+                    const num = v.replace(/[^0-9]/g, "");
+                    setQuantityText(num || "1");
+                  }}
+                  keyboardType="number-pad"
+                  selectTextOnFocus
+                  maxLength={4}
+                />
                 <Pressable
                   style={styles.qtyBtn}
-                  onPress={() => setQuantity(quantity + 1)}
+                  onPress={() => setQuantityText(String(quantity + 1))}
                 >
-                  <Ionicons name="add" size={18} color={Colors.light.text} />
+                  <Ionicons name="add" size={20} color={Colors.light.text} />
                 </Pressable>
-                <Text style={styles.totalCalc}>
-                  = {formatPrice(product.price * quantity)}
-                </Text>
+                <View style={styles.totalBox}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalAmount}>{formatPrice(totalAmount)}</Text>
+                </View>
               </View>
             </View>
           )}
 
-          {/* Divider */}
           <View style={styles.divider} />
 
           {/* Description */}
           <View style={styles.descSection}>
             <Text style={styles.sectionTitle}>Product Description</Text>
             <Text style={styles.description}>{product.description}</Text>
-          </View>
-
-          {/* Highlights */}
-          <View style={styles.highlightsSection}>
-            <Text style={styles.sectionTitle}>Why Choose This?</Text>
-            <View style={styles.highlights}>
-              <HighlightItem icon="shield-checkmark" text="ISI / BIS Certified Quality" />
-              <HighlightItem icon="refresh" text="Easy Return Policy" />
-              <HighlightItem icon="car" text="Fast Pan-India Delivery" />
-              <HighlightItem icon="headset" text="24/7 Technical Support" />
-            </View>
           </View>
         </View>
       </ScrollView>
@@ -325,7 +408,9 @@ export default function ProductDetailScreen() {
               <>
                 <Ionicons name="bag-add" size={20} color="#fff" />
                 <Text style={styles.purchaseBtnText}>
-                  {product.inStock ? `Purchase Now • ${formatPrice(product.price * quantity)}` : "Out of Stock"}
+                  {product.inStock
+                    ? `Purchase Now · ${formatPrice(totalAmount)}`
+                    : "Out of Stock"}
                 </Text>
               </>
             )}
@@ -336,325 +421,132 @@ export default function ProductDetailScreen() {
   );
 }
 
-function HighlightItem({ icon, text }: { icon: string; text: string }) {
-  return (
-    <View style={styles.highlightItem}>
-      <View style={styles.highlightIcon}>
-        <Ionicons name={icon as any} size={16} color={Colors.light.tint} />
-      </View>
-      <Text style={styles.highlightText}>{text}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#fff",
-  },
-  errorText: {
-    fontSize: 16,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-  },
-  imageSection: {
-    position: "relative",
-    height: 380,
-    backgroundColor: Colors.light.backgroundSecondary,
-  },
-  productImage: {
-    width: SCREEN_WIDTH,
-    height: 380,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
+  errorText: { fontSize: 16, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
+
+  imageSection: { position: "relative", height: 340, backgroundColor: Colors.light.backgroundSecondary },
+  productImage: { width: SCREEN_WIDTH, height: 340 },
   imageControls: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    zIndex: 10,
+    position: "absolute", left: 0, right: 0, flexDirection: "row",
+    justifyContent: "space-between", paddingHorizontal: 16, zIndex: 10,
   },
   controlBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.92)", alignItems: "center", justifyContent: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
   },
   imageDots: {
-    position: "absolute",
-    bottom: 12,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
+    position: "absolute", bottom: 10, left: 0, right: 0,
+    flexDirection: "row", justifyContent: "center", gap: 5,
   },
-  imageDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.5)",
-  },
-  imageDotActive: {
-    backgroundColor: "#fff",
-    width: 18,
-  },
+  imageDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.5)" },
+  imageDotActive: { backgroundColor: "#fff", width: 18 },
   discountBadge: {
-    position: "absolute",
-    bottom: 16,
-    left: 16,
-    backgroundColor: Colors.light.error,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    position: "absolute", bottom: 14, left: 14,
+    backgroundColor: Colors.light.error, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
   },
-  discountText: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
-  contentSection: {
-    padding: 20,
-    gap: 12,
-  },
-  tagRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
+  discountText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
+
+  contentSection: { padding: 20, gap: 14 },
+  tagRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   categoryTag: {
-    backgroundColor: Colors.light.tintUltraLight,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: Colors.light.tintUltraLight, borderRadius: 6,
+    paddingHorizontal: 10, paddingVertical: 4,
   },
-  categoryTagText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.tintDark,
-  },
-  brandText: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.textSecondary,
-  },
-  productName: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-    lineHeight: 30,
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  ratingStars: {
-    flexDirection: "row",
-    gap: 1,
-  },
-  ratingNum: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-    color: "#F59E0B",
-  },
-  reviewCount: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-  },
-  priceSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flexWrap: "wrap",
-  },
-  price: {
-    fontSize: 30,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-  },
+  categoryTagText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.light.tintDark },
+  brandText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.textSecondary },
+  productName: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.light.text, lineHeight: 30 },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  ratingStars: { flexDirection: "row", gap: 1 },
+  ratingNum: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#F59E0B" },
+  reviewCount: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
+
+  priceSection: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  price: { fontSize: 30, fontFamily: "Inter_700Bold", color: Colors.light.text },
   originalPrice: {
-    fontSize: 18,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textMuted,
+    fontSize: 18, fontFamily: "Inter_400Regular", color: Colors.light.textMuted,
     textDecorationLine: "line-through",
   },
   savingsBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F0FDF4",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "#F0FDF4", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
   },
-  savingsText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: "#22C55E",
+  savingsText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#22C55E" },
+
+  variantsSection: { gap: 10 },
+  variantsLabel: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.light.text },
+  variantsList: { gap: 10, paddingBottom: 4 },
+  variantChip: {
+    flexDirection: "row", alignItems: "center",
+    borderWidth: 1.5, borderColor: Colors.light.border,
+    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8,
+    backgroundColor: "#fff", minWidth: 100,
   },
-  stockRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  stockText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  quantitySection: {
-    gap: 8,
-  },
-  quantityLabel: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.text,
-  },
-  quantityControls: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  qtyBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: Colors.light.backgroundSecondary,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: Colors.light.border,
-  },
-  qtyBtnDisabled: {
-    opacity: 0.4,
-  },
-  qtyNum: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-    minWidth: 30,
-    textAlign: "center",
-  },
-  totalCalc: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.tintDark,
-    marginLeft: 4,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.light.borderLight,
-    marginVertical: 4,
-  },
-  descSection: {
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-  },
-  description: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-    lineHeight: 22,
-  },
-  highlightsSection: {
-    gap: 12,
-  },
-  highlights: {
-    gap: 10,
-  },
-  highlightItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  highlightIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+  variantChipActive: {
+    borderColor: Colors.light.tint,
     backgroundColor: Colors.light.tintUltraLight,
-    alignItems: "center",
-    justifyContent: "center",
   },
-  highlightText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.text,
+  variantThumb: { width: 36, height: 36, borderRadius: 6, marginRight: 8 },
+  variantInfo: { flex: 1, gap: 2 },
+  variantName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.light.text },
+  variantNameActive: { color: Colors.light.tintDark },
+  variantPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.light.textSecondary },
+  variantPriceActive: { color: Colors.light.tint },
+
+  stockRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
   },
+  stockText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+
+  quantitySection: { gap: 10 },
+  quantityLabel: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.light.text },
+  quantityRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  qtyBtn: {
+    width: 42, height: 42, borderRadius: 11, backgroundColor: Colors.light.backgroundSecondary,
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1.5, borderColor: Colors.light.border,
+  },
+  qtyBtnDisabled: { opacity: 0.4 },
+  qtyInput: {
+    width: 60, height: 42, borderRadius: 11,
+    borderWidth: 1.5, borderColor: Colors.light.tint,
+    backgroundColor: Colors.light.tintUltraLight,
+    textAlign: "center",
+    fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.light.text,
+  },
+  totalBox: {
+    flex: 1, backgroundColor: Colors.light.backgroundSecondary,
+    borderRadius: 11, paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: Colors.light.borderLight, alignItems: "flex-end",
+  },
+  totalLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.light.textMuted },
+  totalAmount: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.light.text },
+
+  divider: { height: 1, backgroundColor: Colors.light.borderLight },
+  descSection: { gap: 8 },
+  sectionTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.light.text },
+  description: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary, lineHeight: 22 },
+
   bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.borderLight,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 10,
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    backgroundColor: "#fff", paddingHorizontal: 20, paddingTop: 14,
+    borderTopWidth: 1, borderTopColor: Colors.light.borderLight,
+    shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 10,
   },
   purchaseBtn: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 14,
-    paddingVertical: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    shadowColor: Colors.light.tint,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
+    backgroundColor: Colors.light.tint, borderRadius: 14, paddingVertical: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    shadowColor: Colors.light.tint, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
   },
-  purchaseBtnDisabled: {
-    backgroundColor: Colors.light.textMuted,
-    shadowOpacity: 0,
-  },
-  purchaseBtnText: {
-    color: "#fff",
-    fontSize: 17,
-    fontFamily: "Inter_700Bold",
-  },
+  purchaseBtnDisabled: { backgroundColor: Colors.light.textMuted, shadowOpacity: 0 },
+  purchaseBtnText: { color: "#fff", fontSize: 17, fontFamily: "Inter_700Bold" },
   purchasedBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    backgroundColor: "#F0FDF4",
-    borderRadius: 14,
-    paddingVertical: 16,
-    borderWidth: 1.5,
-    borderColor: "#BBF7D0",
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    backgroundColor: "#F0FDF4", borderRadius: 14, paddingVertical: 16,
+    borderWidth: 1.5, borderColor: "#BBF7D0",
   },
-  purchasedText: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    color: "#22C55E",
-  },
+  purchasedText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#22C55E" },
 });

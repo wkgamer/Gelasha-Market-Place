@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -39,18 +39,22 @@ export default function LikedScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchLiked();
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchLiked();
+    }, [user])
+  );
 
   async function fetchLiked() {
-    if (!user) return;
+    if (!user) { setLoading(false); return; }
+    setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/likes?userId=${user.id}`);
       const data = await res.json();
-      setProducts(data);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (e) {
       console.log("Error fetching likes", e);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -62,15 +66,16 @@ export default function LikedScreen() {
 
   async function removeLike(productId: string) {
     if (!user) return;
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
     try {
       await fetch(`${API_BASE}/likes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.id, productId }),
       });
-      setProducts((prev) => prev.filter((p) => p.id !== productId));
     } catch (e) {
       console.log("Error removing like", e);
+      fetchLiked();
     }
   }
 
@@ -89,7 +94,7 @@ export default function LikedScreen() {
             <Ionicons name="heart-outline" size={52} color={Colors.light.textMuted} />
           </View>
           <Text style={styles.emptyTitle}>Your wishlist is empty</Text>
-          <Text style={styles.emptySubtitle}>Save items you love by tapping the heart icon</Text>
+          <Text style={styles.emptySubtitle}>Tap the heart on any product to save it here</Text>
           <Pressable style={styles.shopBtn} onPress={() => router.replace("/(tabs)")}>
             <Text style={styles.shopBtnText}>Start Shopping</Text>
           </Pressable>
@@ -134,147 +139,42 @@ export default function LikedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.backgroundSecondary,
-  },
+  container: { flex: 1, backgroundColor: Colors.light.backgroundSecondary },
   header: {
     backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.borderLight,
+    paddingHorizontal: 16, paddingBottom: 16,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-  },
-  headerCount: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-  },
-  listContent: {
-    padding: 16,
-    gap: 12,
-  },
+  headerTitle: { fontSize: 24, fontFamily: "Inter_700Bold", color: Colors.light.text },
+  headerCount: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
+  listContent: { padding: 16, gap: 12 },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    flexDirection: "row",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: "#fff", borderRadius: 16, flexDirection: "row", overflow: "hidden",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
-  cardImage: {
-    width: 110,
-    height: 110,
-  },
-  cardInfo: {
-    flex: 1,
-    padding: 12,
-    justifyContent: "center",
-    gap: 4,
-  },
-  cardBrand: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.tint,
-    textTransform: "uppercase",
-  },
-  cardName: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.text,
-    lineHeight: 18,
-  },
-  cardRating: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  ratingText: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexWrap: "wrap",
-  },
-  price: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-  },
-  originalPrice: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textMuted,
-    textDecorationLine: "line-through",
-  },
-  discountBadge: {
-    backgroundColor: "#FEF2F2",
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-  },
-  discountText: {
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.error,
-  },
-  removeBtn: {
-    padding: 12,
-    justifyContent: "flex-start",
-    alignItems: "center",
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: 40,
-  },
+  cardImage: { width: 110, height: 110 },
+  cardInfo: { flex: 1, padding: 12, justifyContent: "center", gap: 4 },
+  cardBrand: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.light.tint, textTransform: "uppercase" },
+  cardName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.text, lineHeight: 18 },
+  cardRating: { flexDirection: "row", alignItems: "center", gap: 3 },
+  ratingText: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  price: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.light.text },
+  originalPrice: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.light.textMuted, textDecorationLine: "line-through" },
+  discountBadge: { backgroundColor: "#FEF2F2", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 },
+  discountText: { fontSize: 10, fontFamily: "Inter_700Bold", color: Colors.light.error },
+  removeBtn: { padding: 12, justifyContent: "flex-start", alignItems: "center" },
+  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 40 },
   emptyIcon: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: Colors.light.backgroundSecondary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
+    width: 90, height: 90, borderRadius: 45,
+    backgroundColor: Colors.light.backgroundSecondary, alignItems: "center", justifyContent: "center", marginBottom: 8,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-    textAlign: "center",
-  },
+  emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.light.text },
+  emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary, textAlign: "center" },
   shopBtn: {
-    backgroundColor: Colors.light.tint,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    marginTop: 8,
+    backgroundColor: Colors.light.tint, borderRadius: 12,
+    paddingVertical: 14, paddingHorizontal: 32, marginTop: 8,
   },
-  shopBtnText: {
-    color: "#fff",
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
+  shopBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
 });
