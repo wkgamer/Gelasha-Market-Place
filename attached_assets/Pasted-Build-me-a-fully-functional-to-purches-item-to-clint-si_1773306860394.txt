@@ -1,0 +1,33 @@
+Build me a fully functional to purches item to clint side put in that app that helps users show item with photo like amezon and flipcart click item to show all detail in full screen and down side give purches button one click to purches them.
+
+It should include [ FOR CLINT SIDE :- start app to user give sign-in and create account option in create accout user input that {first face - user name ,email id,password,verify password} {second face - site name , site address, transport address (check button to copy site address), GST number , mobile number (1st box compalsary & 2nd box optional } {third pase (optional)- application like Where do you use it? AND Whal fuel do you use? } for first time and sign-in option to input email Id and password . complate sign-in user saw all item with there profile image and top of app user give search bar and catogary selection option .click on item to go in show interface like item name, item profile picture , details , other picture , like & share option and type chosing bar like amezon to choose variants in sections {click on variant in section , when other picture are change and add price on amount input variant by opraetor} and down to purchase button . to click purchase button show all purchase type chosing you choose and quantity increase and decrease button and please not enter price or amount section and down give confirm to purchase button . user give like option to item show in like folder and share option to share item with link ] [ FOR OPRAETOR SIDE :- start app to input opraetor email-Id and password . go in opretore interface to show all item like clint side but click on item to chang details, photo , cetogary , chosing options etc... to all that item. and opraetor gives to option to add new cetogary & item  and also add delete old item and cetogary option. in add item opraetor input item profile picture, item name , item details , choose category to input option, add other images , add purches type chosing {in purches type chosing add multi section. In separate section give section name and add variants option in variants option give variant name option} all with done button . opraetor give to order folder to show all orders with item name , item profile picture and clint user name {when clint side press confirm to purchase button ;order go in order folder to opraetor with all clint details and purchase details choose by clint . when new order generate notification sent in opraetors side to pop-up(Anyone Purchase Order) and also send notification on device of opretor} and also add order pending to confirmed button . to click on order show clint user name , clint site name , clint site address, clint transport address , clint GST number , clint all mobile numbers , clint application input in account , purchase item name , purchase item profile picture , purchase item category , purchase item type chosing all variants name with in sections name. And opretore to give folder to saw all quantity to product was purchase . ] , and have a clean, modern, user-friendly Interface.
+
+Add sample data so I can test all features.
+
+Make sure everything is connected - front end, backend logic, and data storage.
+
+Include user authentication if it makes sense.
+
+Once built, explain how I can modify features or add more pages later
+
+AND MOST IMP CHECK DWON SIDE:-
+
+1. app name : Gelasha Market Place
+
+2. app layout main color : sky-blue
+
+3. app icon : i upload app icon png file
+
+4. give test id but they are not preview in app and also add opretor id : email id : gelashaengineers@yahoo.co.in    password:prakash@9879818915
+
+5. app moto : Technology Is Always Moveing Forward
+
+6. give icon to bottom bar of main page , where you write shop , liked , orders , profile
+
+7. Other image saw in clint side properly slide and changed
+
+8. sing-in , create accout , sing-out button was properly work, please preview and check this
+
+9. check properly input text not goes out from that box
+
+10. all button and fechures are properly work also preview and check this
