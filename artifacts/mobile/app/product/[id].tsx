@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
@@ -13,7 +13,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +27,7 @@ interface ProductVariant {
   name: string;
   price: number;
   image?: string;
+  group?: string;
 }
 
 interface Product {
@@ -59,13 +59,11 @@ export default function ProductDetailScreen() {
   const [liked, setLiked] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [purchased, setPurchased] = useState(false);
-  const [quantityText, setQuantityText] = useState("1");
-  const [activeImage, setActiveImage] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [activeImage, setActiveImage] = useState(0);
   const imageListRef = useRef<FlatList>(null);
 
-  const quantity = parseInt(quantityText, 10) || 1;
-  const effectivePrice = selectedVariant ? selectedVariant.price : product?.price ?? 0;
+  const effectivePrice = selectedVariant ? selectedVariant.price : (product?.price ?? 0);
 
   useEffect(() => {
     fetchProduct();
@@ -90,9 +88,7 @@ export default function ProductDetailScreen() {
       const res = await fetch(`${API_BASE}/likes?userId=${user.id}`);
       const data: Product[] = await res.json();
       setLiked(data.some((p) => p.id === id));
-    } catch (e) {
-      console.log("Error fetching likes", e);
-    }
+    } catch (e) {}
   }
 
   async function toggleLike() {
@@ -113,25 +109,20 @@ export default function ProductDetailScreen() {
 
   async function handlePurchase() {
     if (!user || !product) return;
-    const qty = Math.max(1, quantity);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setPurchasing(true);
     try {
       const res = await fetch(`${API_BASE}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          productId: product.id,
-          quantity: qty,
-        }),
+        body: JSON.stringify({ userId: user.id, productId: product.id, quantity: 1 }),
       });
       if (res.ok) {
         setPurchased(true);
         if (Platform.OS !== "web") {
           Alert.alert(
             "Order Placed!",
-            `Your order for ${product.name}${selectedVariant ? ` (${selectedVariant.name})` : ""} × ${qty} has been confirmed.`,
+            `Your order for ${product.name}${selectedVariant ? ` (${selectedVariant.name})` : ""} has been confirmed.`,
             [
               { text: "View Orders", onPress: () => { router.dismiss(); router.replace("/(tabs)/orders"); } },
               { text: "Continue Shopping", onPress: () => router.dismiss() },
@@ -154,6 +145,8 @@ export default function ProductDetailScreen() {
     if (Platform.OS !== "web") Haptics.selectionAsync();
     if (selectedVariant?.id === variant.id) {
       setSelectedVariant(null);
+      setActiveImage(0);
+      imageListRef.current?.scrollToIndex({ index: 0, animated: true });
     } else {
       setSelectedVariant(variant);
       if (variant.image) {
@@ -176,6 +169,17 @@ export default function ProductDetailScreen() {
     return [...base, ...variantImgs];
   }
 
+  function getVariantGroups(): { group: string; variants: ProductVariant[] }[] {
+    if (!product?.variants?.length) return [];
+    const grouped: Record<string, ProductVariant[]> = {};
+    for (const v of product.variants) {
+      const g = v.group || "Choose Variant";
+      if (!grouped[g]) grouped[g] = [];
+      grouped[g].push(v);
+    }
+    return Object.entries(grouped).map(([group, variants]) => ({ group, variants }));
+  }
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -193,13 +197,14 @@ export default function ProductDetailScreen() {
   }
 
   const allImages = getAllImages();
-  const savings = product.originalPrice ? product.originalPrice - effectivePrice : 0;
-  const totalAmount = effectivePrice * quantity;
-  const hasVariants = product.variants && product.variants.length > 0;
+  const savings = product.originalPrice && !selectedVariant ? product.originalPrice - effectivePrice : 0;
+  const variantGroups = getVariantGroups();
+  const hasVariants = variantGroups.length > 0;
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPad + 120 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPad + 110 }}>
+
         {/* Image Slider */}
         <View style={styles.imageSection}>
           <FlatList
@@ -248,6 +253,7 @@ export default function ProductDetailScreen() {
 
         {/* Product Info */}
         <View style={styles.contentSection}>
+          {/* Category & Brand */}
           <View style={styles.tagRow}>
             <View style={styles.categoryTag}>
               <Text style={styles.categoryTagText}>{product.category}</Text>
@@ -255,8 +261,10 @@ export default function ProductDetailScreen() {
             <Text style={styles.brandText}>{product.brand}</Text>
           </View>
 
+          {/* Name */}
           <Text style={styles.productName}>{product.name}</Text>
 
+          {/* Rating */}
           <View style={styles.ratingRow}>
             <View style={styles.ratingStars}>
               {[1, 2, 3, 4, 5].map((star) => (
@@ -278,9 +286,9 @@ export default function ProductDetailScreen() {
             {product.originalPrice && !selectedVariant && (
               <Text style={styles.originalPrice}>{formatPrice(product.originalPrice)}</Text>
             )}
-            {savings > 0 && !selectedVariant && (
+            {savings > 0 && (
               <View style={styles.savingsBadge}>
-                <Ionicons name="pricetag" size={11} color="#22C55E" />
+                <MaterialCommunityIcons name="tag" size={11} color="#22C55E" />
                 <Text style={styles.savingsText}>Save {formatPrice(savings)}</Text>
               </View>
             )}
@@ -291,41 +299,41 @@ export default function ProductDetailScreen() {
             )}
           </View>
 
-          {/* Variants */}
-          {hasVariants && (
-            <View style={styles.variantsSection}>
-              <Text style={styles.variantsLabel}>
-                Choose Variant {selectedVariant ? `— ${selectedVariant.name}` : ""}
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.variantsList}>
-                {product.variants.map((variant) => {
+          {/* Amazon-style Variant Groups */}
+          {hasVariants && variantGroups.map(({ group, variants }) => (
+            <View key={group} style={styles.variantGroupSection}>
+              <View style={styles.variantGroupHeader}>
+                <Text style={styles.variantGroupLabel}>{group}</Text>
+                {selectedVariant && variants.some((v) => v.id === selectedVariant.id) && (
+                  <Text style={styles.variantSelectedLabel}>{selectedVariant.name}</Text>
+                )}
+              </View>
+              <View style={styles.variantGrid}>
+                {variants.map((variant) => {
                   const isSelected = selectedVariant?.id === variant.id;
                   return (
                     <Pressable
                       key={variant.id}
-                      style={[styles.variantChip, isSelected && styles.variantChipActive]}
+                      style={[styles.variantBtn, isSelected && styles.variantBtnActive]}
                       onPress={() => handleVariantSelect(variant)}
                     >
                       {variant.image ? (
-                        <Image source={{ uri: variant.image }} style={styles.variantThumb} contentFit="cover" />
+                        <Image source={{ uri: variant.image }} style={styles.variantBtnImg} contentFit="cover" />
                       ) : null}
-                      <View style={styles.variantInfo}>
-                        <Text style={[styles.variantName, isSelected && styles.variantNameActive]}>
+                      <View>
+                        <Text style={[styles.variantBtnName, isSelected && styles.variantBtnNameActive]}>
                           {variant.name}
                         </Text>
-                        <Text style={[styles.variantPrice, isSelected && styles.variantPriceActive]}>
+                        <Text style={[styles.variantBtnPrice, isSelected && styles.variantBtnPriceActive]}>
                           {formatPrice(variant.price)}
                         </Text>
                       </View>
-                      {isSelected && (
-                        <Ionicons name="checkmark-circle" size={16} color={Colors.light.tint} style={{ marginLeft: 6 }} />
-                      )}
                     </Pressable>
                   );
                 })}
-              </ScrollView>
+              </View>
             </View>
-          )}
+          ))}
 
           {/* Stock Status */}
           <View style={[styles.stockRow, { backgroundColor: product.inStock ? "#F0FDF4" : "#FEF2F2" }]}>
@@ -339,42 +347,6 @@ export default function ProductDetailScreen() {
             </Text>
           </View>
 
-          {/* Quantity & Amount */}
-          {product.inStock && (
-            <View style={styles.quantitySection}>
-              <Text style={styles.quantityLabel}>Quantity & Purchase Amount</Text>
-              <View style={styles.quantityRow}>
-                <Pressable
-                  style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
-                  onPress={() => setQuantityText(String(Math.max(1, quantity - 1)))}
-                >
-                  <Ionicons name="remove" size={20} color={quantity <= 1 ? Colors.light.textMuted : Colors.light.text} />
-                </Pressable>
-                <TextInput
-                  style={styles.qtyInput}
-                  value={quantityText}
-                  onChangeText={(v) => {
-                    const num = v.replace(/[^0-9]/g, "");
-                    setQuantityText(num || "1");
-                  }}
-                  keyboardType="number-pad"
-                  selectTextOnFocus
-                  maxLength={4}
-                />
-                <Pressable
-                  style={styles.qtyBtn}
-                  onPress={() => setQuantityText(String(quantity + 1))}
-                >
-                  <Ionicons name="add" size={20} color={Colors.light.text} />
-                </Pressable>
-                <View style={styles.totalBox}>
-                  <Text style={styles.totalLabel}>Total</Text>
-                  <Text style={styles.totalAmount}>{formatPrice(totalAmount)}</Text>
-                </View>
-              </View>
-            </View>
-          )}
-
           <View style={styles.divider} />
 
           {/* Description */}
@@ -386,7 +358,7 @@ export default function ProductDetailScreen() {
       </ScrollView>
 
       {/* Bottom Buy Button */}
-      <View style={[styles.bottomBar, { paddingBottom: bottomPad + 16 }]}>
+      <View style={[styles.bottomBar, { paddingBottom: bottomPad + 14 }]}>
         {purchased ? (
           <View style={styles.purchasedBanner}>
             <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
@@ -406,10 +378,10 @@ export default function ProductDetailScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Ionicons name="bag-add" size={20} color="#fff" />
+                <MaterialCommunityIcons name="bag-personal-outline" size={20} color="#fff" />
                 <Text style={styles.purchaseBtnText}>
                   {product.inStock
-                    ? `Purchase Now · ${formatPrice(totalAmount)}`
+                    ? `Purchase Now · ${formatPrice(effectivePrice)}`
                     : "Out of Stock"}
                 </Text>
               </>
@@ -449,11 +421,10 @@ const styles = StyleSheet.create({
   },
   discountText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
 
-  contentSection: { padding: 20, gap: 14 },
+  contentSection: { padding: 18, gap: 14 },
   tagRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   categoryTag: {
-    backgroundColor: Colors.light.tintUltraLight, borderRadius: 6,
-    paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: Colors.light.tintUltraLight, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4,
   },
   categoryTagText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.light.tintDark },
   brandText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.textSecondary },
@@ -466,8 +437,7 @@ const styles = StyleSheet.create({
   priceSection: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
   price: { fontSize: 30, fontFamily: "Inter_700Bold", color: Colors.light.text },
   originalPrice: {
-    fontSize: 18, fontFamily: "Inter_400Regular", color: Colors.light.textMuted,
-    textDecorationLine: "line-through",
+    fontSize: 18, fontFamily: "Inter_400Regular", color: Colors.light.textMuted, textDecorationLine: "line-through",
   },
   savingsBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
@@ -475,55 +445,47 @@ const styles = StyleSheet.create({
   },
   savingsText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#22C55E" },
 
-  variantsSection: { gap: 10 },
-  variantsLabel: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.light.text },
-  variantsList: { gap: 10, paddingBottom: 4 },
-  variantChip: {
-    flexDirection: "row", alignItems: "center",
+  variantGroupSection: { gap: 10 },
+  variantGroupHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+  },
+  variantGroupLabel: {
+    fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.light.text,
+  },
+  variantSelectedLabel: {
+    fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.light.textSecondary,
+    backgroundColor: Colors.light.backgroundSecondary, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2,
+  },
+  variantGrid: {
+    flexDirection: "row", flexWrap: "wrap", gap: 10,
+  },
+  variantBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
     borderWidth: 1.5, borderColor: Colors.light.border,
-    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8,
-    backgroundColor: "#fff", minWidth: 100,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+    backgroundColor: "#fff", minWidth: 80,
   },
-  variantChipActive: {
-    borderColor: Colors.light.tint,
-    backgroundColor: Colors.light.tintUltraLight,
+  variantBtnActive: {
+    borderColor: Colors.light.tint, backgroundColor: Colors.light.tintUltraLight,
+    borderWidth: 2,
   },
-  variantThumb: { width: 36, height: 36, borderRadius: 6, marginRight: 8 },
-  variantInfo: { flex: 1, gap: 2 },
-  variantName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.light.text },
-  variantNameActive: { color: Colors.light.tintDark },
-  variantPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.light.textSecondary },
-  variantPriceActive: { color: Colors.light.tint },
+  variantBtnImg: {
+    width: 30, height: 30, borderRadius: 6, backgroundColor: Colors.light.border,
+  },
+  variantBtnName: {
+    fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.text,
+  },
+  variantBtnNameActive: { color: Colors.light.tintDark },
+  variantBtnPrice: {
+    fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.light.textSecondary,
+  },
+  variantBtnPriceActive: { color: Colors.light.tint },
 
   stockRow: {
     flexDirection: "row", alignItems: "center", gap: 8,
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
   },
   stockText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-
-  quantitySection: { gap: 10 },
-  quantityLabel: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.light.text },
-  quantityRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  qtyBtn: {
-    width: 42, height: 42, borderRadius: 11, backgroundColor: Colors.light.backgroundSecondary,
-    alignItems: "center", justifyContent: "center",
-    borderWidth: 1.5, borderColor: Colors.light.border,
-  },
-  qtyBtnDisabled: { opacity: 0.4 },
-  qtyInput: {
-    width: 60, height: 42, borderRadius: 11,
-    borderWidth: 1.5, borderColor: Colors.light.tint,
-    backgroundColor: Colors.light.tintUltraLight,
-    textAlign: "center",
-    fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.light.text,
-  },
-  totalBox: {
-    flex: 1, backgroundColor: Colors.light.backgroundSecondary,
-    borderRadius: 11, paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1, borderColor: Colors.light.borderLight, alignItems: "flex-end",
-  },
-  totalLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.light.textMuted },
-  totalAmount: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.light.text },
 
   divider: { height: 1, backgroundColor: Colors.light.borderLight },
   descSection: { gap: 8 },
@@ -532,12 +494,12 @@ const styles = StyleSheet.create({
 
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    backgroundColor: "#fff", paddingHorizontal: 20, paddingTop: 14,
+    backgroundColor: "#fff", paddingHorizontal: 18, paddingTop: 12,
     borderTopWidth: 1, borderTopColor: Colors.light.borderLight,
     shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 10,
   },
   purchaseBtn: {
-    backgroundColor: Colors.light.tint, borderRadius: 14, paddingVertical: 16,
+    backgroundColor: Colors.light.tint, borderRadius: 14, paddingVertical: 15,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
     shadowColor: Colors.light.tint, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
   },
@@ -545,7 +507,7 @@ const styles = StyleSheet.create({
   purchaseBtnText: { color: "#fff", fontSize: 17, fontFamily: "Inter_700Bold" },
   purchasedBanner: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
-    backgroundColor: "#F0FDF4", borderRadius: 14, paddingVertical: 16,
+    backgroundColor: "#F0FDF4", borderRadius: 14, paddingVertical: 15,
     borderWidth: 1.5, borderColor: "#BBF7D0",
   },
   purchasedText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#22C55E" },

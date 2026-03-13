@@ -7,6 +7,7 @@ export interface ProductVariant {
   name: string;
   price: number;
   image?: string;
+  group?: string;
 }
 
 export const productsTable = pgTable("products", {

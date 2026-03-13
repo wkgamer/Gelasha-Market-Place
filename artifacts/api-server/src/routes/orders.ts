@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, ordersTable, productsTable } from "@workspace/db";
+import { db, ordersTable, productsTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -25,6 +25,56 @@ function formatProduct(p: typeof productsTable.$inferSelect) {
     discount: p.discount || 0,
   };
 }
+
+function formatUser(u: typeof usersTable.$inferSelect) {
+  return {
+    id: u.id,
+    username: u.username,
+    email: u.email,
+    siteName: u.siteName,
+    siteAddress: u.siteAddress,
+    transportAddress: u.transportAddress,
+    gstNumber: u.gstNumber,
+    mobile1: u.mobile1,
+    mobile2: u.mobile2,
+    appUsage: u.appUsage,
+    fuelType: u.fuelType,
+    role: u.role,
+    createdAt: u.createdAt.toISOString(),
+  };
+}
+
+router.get("/all", async (req, res) => {
+  try {
+    const orders = await db.select().from(ordersTable);
+
+    const enriched = await Promise.all(
+      orders.map(async (order) => {
+        const [products, users] = await Promise.all([
+          db.select().from(productsTable).where(eq(productsTable.id, order.productId)),
+          db.select().from(usersTable).where(eq(usersTable.id, order.userId)),
+        ]);
+
+        return {
+          id: order.id,
+          userId: order.userId,
+          productId: order.productId,
+          product: products.length > 0 ? formatProduct(products[0]) : null,
+          client: users.length > 0 ? formatUser(users[0]) : null,
+          quantity: order.quantity,
+          totalPrice: parseFloat(order.totalPrice as string),
+          status: order.status,
+          createdAt: order.createdAt.toISOString(),
+        };
+      })
+    );
+
+    res.json(enriched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 router.get("/", async (req, res) => {
   try {
@@ -66,7 +116,7 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const { userId, productId, quantity } = req.body;
-    if (!userId || !productId || !quantity) {
+    if (!userId || !productId) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -78,14 +128,15 @@ router.post("/", async (req, res) => {
     if (products.length === 0) return res.status(404).json({ error: "Product not found" });
 
     const product = products[0];
-    const totalPrice = parseFloat(product.price as string) * quantity;
+    const qty = quantity || 1;
+    const totalPrice = parseFloat(product.price as string) * qty;
     const id = generateId();
 
     await db.insert(ordersTable).values({
       id,
       userId,
       productId,
-      quantity,
+      quantity: qty,
       totalPrice: totalPrice.toFixed(2),
       status: "confirmed",
     });

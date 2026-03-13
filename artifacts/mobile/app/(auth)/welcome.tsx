@@ -51,8 +51,8 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.tagline}>
-        <Text style={styles.taglineText}>India's #1 Industrial Equipment</Text>
-        <Text style={styles.taglineText}>Marketplace</Text>
+        <Text style={styles.taglineText}>Built on 21 Years of</Text>
+        <Text style={styles.taglineText}>Pump Manufacturing Experience</Text>
       </View>
 
       <View style={styles.buttonsSection}>
