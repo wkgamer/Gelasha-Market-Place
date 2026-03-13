@@ -1,6 +1,6 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import Colors from "@/constants/colors";
@@ -41,8 +41,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Shop",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="store-outline" size={size ?? 24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
           ),
         }}
       />
@@ -50,8 +50,8 @@ export default function TabLayout() {
         name="liked"
         options={{
           title: "Liked",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="heart-outline" size={size ?? 24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "heart" : "heart-outline"} size={24} color={color} />
           ),
         }}
       />
@@ -59,8 +59,8 @@ export default function TabLayout() {
         name="orders"
         options={{
           title: "Orders",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="package-variant-closed" size={size ?? 24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "cube" : "cube-outline"} size={24} color={color} />
           ),
         }}
       />
@@ -68,8 +68,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="account-outline" size={size ?? 24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
           ),
         }}
       />
