@@ -115,17 +115,11 @@ export default function LikedScreen() {
                   <Ionicons name="star" size={12} color="#F59E0B" />
                   <Text style={styles.ratingText}>{item.rating} ({item.reviewCount})</Text>
                 </View>
-                <View style={styles.priceRow}>
-                  <Text style={styles.price}>{formatPrice(item.price)}</Text>
-                  {item.originalPrice && (
-                    <Text style={styles.originalPrice}>{formatPrice(item.originalPrice)}</Text>
-                  )}
-                  {item.discount ? (
-                    <View style={styles.discountBadge}>
-                      <Text style={styles.discountText}>{item.discount}% OFF</Text>
-                    </View>
-                  ) : null}
-                </View>
+                {!item.inStock && (
+                  <View style={styles.outOfStockBadge}>
+                    <Text style={styles.outOfStockText}>Out of Stock</Text>
+                  </View>
+                )}
               </View>
               <Pressable style={styles.removeBtn} onPress={() => removeLike(item.id)}>
                 <Ionicons name="heart" size={22} color={Colors.light.error} />
@@ -159,11 +153,8 @@ const styles = StyleSheet.create({
   cardName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.text, lineHeight: 18 },
   cardRating: { flexDirection: "row", alignItems: "center", gap: 3 },
   ratingText: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  price: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.light.text },
-  originalPrice: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.light.textMuted, textDecorationLine: "line-through" },
-  discountBadge: { backgroundColor: "#FEF2F2", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 },
-  discountText: { fontSize: 10, fontFamily: "Inter_700Bold", color: Colors.light.error },
+  outOfStockBadge: { backgroundColor: "#FEF2F2", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start" },
+  outOfStockText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.light.error },
   removeBtn: { padding: 12, justifyContent: "flex-start", alignItems: "center" },
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 40 },
   emptyIcon: {

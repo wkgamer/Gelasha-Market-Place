@@ -219,7 +219,7 @@ export default function ShopScreen() {
           ) : (
             <View style={styles.productGrid}>
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} onPress={() => router.push(`/product/${product.id}`)} formatPrice={formatPrice} />
+                <ProductCard key={product.id} product={product} onPress={() => router.push(`/product/${product.id}`)} />
               ))}
             </View>
           )}
@@ -229,7 +229,7 @@ export default function ShopScreen() {
   );
 }
 
-function ProductCard({ product, onPress, formatPrice }: { product: Product; onPress: () => void; formatPrice: (p: number) => string }) {
+function ProductCard({ product, onPress }: { product: Product; onPress: () => void }) {
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -243,11 +243,11 @@ function ProductCard({ product, onPress, formatPrice }: { product: Product; onPr
       <Animated.View style={[styles.productCard, animatedStyle]}>
         <View style={styles.productImageContainer}>
           <Image source={{ uri: product.imageUrl }} style={styles.productImage} contentFit="cover" />
-          {product.discount ? (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>{product.discount}% OFF</Text>
+          {!product.inStock && (
+            <View style={styles.outOfStockOverlay}>
+              <Text style={styles.outOfStockOverlayText}>Out of Stock</Text>
             </View>
-          ) : null}
+          )}
         </View>
         <View style={styles.productInfo}>
           <Text style={styles.productBrand}>{product.brand}</Text>
@@ -256,13 +256,7 @@ function ProductCard({ product, onPress, formatPrice }: { product: Product; onPr
             <Ionicons name="star" size={11} color="#F59E0B" />
             <Text style={styles.ratingText}>{product.rating} ({product.reviewCount})</Text>
           </View>
-          <View style={styles.priceRow}>
-            <Text style={styles.productPrice}>{formatPrice(product.price)}</Text>
-            {product.originalPrice && (
-              <Text style={styles.originalPrice}>{formatPrice(product.originalPrice)}</Text>
-            )}
-          </View>
-          {!product.inStock && <Text style={styles.outOfStock}>Out of Stock</Text>}
+          <Text style={styles.tapToView}>Tap to view details</Text>
         </View>
       </Animated.View>
     </Pressable>
@@ -506,27 +500,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.light.textSecondary,
   },
-  priceRow: {
-    flexDirection: "row",
+  outOfStockOverlay: {
+    position: "absolute",
+    bottom: 0, left: 0, right: 0,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingVertical: 4,
     alignItems: "center",
-    gap: 6,
-    marginTop: 4,
   },
-  productPrice: {
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-  },
-  originalPrice: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textMuted,
-    textDecorationLine: "line-through",
-  },
-  outOfStock: {
+  outOfStockOverlayText: {
     fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.error,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
+  tapToView: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.tint,
+    marginTop: 4,
   },
   emptyState: {
     alignItems: "center",

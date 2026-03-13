@@ -59,11 +59,11 @@ export default function ProductDetailScreen() {
   const [liked, setLiked] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [purchased, setPurchased] = useState(false);
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+
+  // Multi-variant: one selection per group
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, ProductVariant>>({});
   const [activeImage, setActiveImage] = useState(0);
   const imageListRef = useRef<FlatList>(null);
-
-  const effectivePrice = selectedVariant ? selectedVariant.price : (product?.price ?? 0);
 
   useEffect(() => {
     fetchProduct();
@@ -119,10 +119,11 @@ export default function ProductDetailScreen() {
       });
       if (res.ok) {
         setPurchased(true);
+        const variantSummary = Object.values(selectedVariants).map((v) => v.name).join(", ");
         if (Platform.OS !== "web") {
           Alert.alert(
             "Order Placed!",
-            `Your order for ${product.name}${selectedVariant ? ` (${selectedVariant.name})` : ""} has been confirmed.`,
+            `Your order for ${product.name}${variantSummary ? ` (${variantSummary})` : ""} has been confirmed.`,
             [
               { text: "View Orders", onPress: () => { router.dismiss(); router.replace("/(tabs)/orders"); } },
               { text: "Continue Shopping", onPress: () => router.dismiss() },
@@ -137,25 +138,27 @@ export default function ProductDetailScreen() {
     }
   }
 
-  function formatPrice(price: number) {
-    return `₹${price.toLocaleString("en-IN")}`;
-  }
-
   function handleVariantSelect(variant: ProductVariant) {
     if (Platform.OS !== "web") Haptics.selectionAsync();
-    if (selectedVariant?.id === variant.id) {
-      setSelectedVariant(null);
-      setActiveImage(0);
-      imageListRef.current?.scrollToIndex({ index: 0, animated: true });
-    } else {
-      setSelectedVariant(variant);
-      if (variant.image) {
-        const allImgs = getAllImages();
-        const idx = allImgs.indexOf(variant.image);
-        if (idx >= 0) {
-          setActiveImage(idx);
-          imageListRef.current?.scrollToIndex({ index: idx, animated: true });
-        }
+    const groupName = variant.group || "Choose Variant";
+
+    setSelectedVariants((prev) => {
+      const alreadySelected = prev[groupName]?.id === variant.id;
+      if (alreadySelected) {
+        const updated = { ...prev };
+        delete updated[groupName];
+        return updated;
+      }
+      return { ...prev, [groupName]: variant };
+    });
+
+    // Scroll to variant image
+    if (variant.image) {
+      const allImgs = getAllImages();
+      const idx = allImgs.indexOf(variant.image);
+      if (idx >= 0) {
+        setActiveImage(idx);
+        imageListRef.current?.scrollToIndex({ index: idx, animated: true });
       }
     }
   }
@@ -197,9 +200,9 @@ export default function ProductDetailScreen() {
   }
 
   const allImages = getAllImages();
-  const savings = product.originalPrice && !selectedVariant ? product.originalPrice - effectivePrice : 0;
   const variantGroups = getVariantGroups();
   const hasVariants = variantGroups.length > 0;
+  const selectedCount = Object.keys(selectedVariants).length;
 
   return (
     <View style={styles.container}>
@@ -243,12 +246,6 @@ export default function ProductDetailScreen() {
               ))}
             </View>
           )}
-
-          {product.discount ? (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>{product.discount}% OFF</Text>
-            </View>
-          ) : null}
         </View>
 
         {/* Product Info */}
@@ -280,60 +277,49 @@ export default function ProductDetailScreen() {
             <Text style={styles.reviewCount}>({product.reviewCount} reviews)</Text>
           </View>
 
-          {/* Price */}
-          <View style={styles.priceSection}>
-            <Text style={styles.price}>{formatPrice(effectivePrice)}</Text>
-            {product.originalPrice && !selectedVariant && (
-              <Text style={styles.originalPrice}>{formatPrice(product.originalPrice)}</Text>
-            )}
-            {savings > 0 && (
-              <View style={styles.savingsBadge}>
-                <MaterialCommunityIcons name="tag" size={11} color="#22C55E" />
-                <Text style={styles.savingsText}>Save {formatPrice(savings)}</Text>
-              </View>
-            )}
-            {selectedVariant && (
-              <View style={[styles.savingsBadge, { backgroundColor: Colors.light.tintUltraLight }]}>
-                <Text style={[styles.savingsText, { color: Colors.light.tintDark }]}>{selectedVariant.name}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Amazon-style Variant Groups */}
-          {hasVariants && variantGroups.map(({ group, variants }) => (
-            <View key={group} style={styles.variantGroupSection}>
-              <View style={styles.variantGroupHeader}>
-                <Text style={styles.variantGroupLabel}>{group}</Text>
-                {selectedVariant && variants.some((v) => v.id === selectedVariant.id) && (
-                  <Text style={styles.variantSelectedLabel}>{selectedVariant.name}</Text>
-                )}
-              </View>
-              <View style={styles.variantGrid}>
-                {variants.map((variant) => {
-                  const isSelected = selectedVariant?.id === variant.id;
-                  return (
-                    <Pressable
-                      key={variant.id}
-                      style={[styles.variantBtn, isSelected && styles.variantBtnActive]}
-                      onPress={() => handleVariantSelect(variant)}
-                    >
-                      {variant.image ? (
-                        <Image source={{ uri: variant.image }} style={styles.variantBtnImg} contentFit="cover" />
-                      ) : null}
-                      <View>
+          {/* Amazon-style Multi-Variant Groups */}
+          {hasVariants && variantGroups.map(({ group, variants }) => {
+            const groupSelected = selectedVariants[group];
+            return (
+              <View key={group} style={styles.variantGroupSection}>
+                <View style={styles.variantGroupHeader}>
+                  <Text style={styles.variantGroupLabel}>{group}:</Text>
+                  {groupSelected && (
+                    <Text style={styles.variantSelectedLabel}>{groupSelected.name}</Text>
+                  )}
+                </View>
+                <View style={styles.variantGrid}>
+                  {variants.map((variant) => {
+                    const isSelected = selectedVariants[group]?.id === variant.id;
+                    return (
+                      <Pressable
+                        key={variant.id}
+                        style={[styles.variantBtn, isSelected && styles.variantBtnActive]}
+                        onPress={() => handleVariantSelect(variant)}
+                      >
+                        {variant.image ? (
+                          <Image source={{ uri: variant.image }} style={styles.variantBtnImg} contentFit="cover" />
+                        ) : null}
                         <Text style={[styles.variantBtnName, isSelected && styles.variantBtnNameActive]}>
                           {variant.name}
                         </Text>
-                        <Text style={[styles.variantBtnPrice, isSelected && styles.variantBtnPriceActive]}>
-                          {formatPrice(variant.price)}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  );
-                })}
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
+            );
+          })}
+
+          {/* Selected summary */}
+          {selectedCount > 0 && (
+            <View style={styles.selectionSummary}>
+              <Ionicons name="checkmark-circle" size={16} color={Colors.light.tint} />
+              <Text style={styles.selectionSummaryText}>
+                Selected: {Object.entries(selectedVariants).map(([g, v]) => `${g}: ${v.name}`).join("  •  ")}
+              </Text>
             </View>
-          ))}
+          )}
 
           {/* Stock Status */}
           <View style={[styles.stockRow, { backgroundColor: product.inStock ? "#F0FDF4" : "#FEF2F2" }]}>
@@ -380,9 +366,7 @@ export default function ProductDetailScreen() {
               <>
                 <MaterialCommunityIcons name="bag-personal-outline" size={20} color="#fff" />
                 <Text style={styles.purchaseBtnText}>
-                  {product.inStock
-                    ? `Purchase Now · ${formatPrice(effectivePrice)}`
-                    : "Out of Stock"}
+                  {product.inStock ? "Purchase Now" : "Out of Stock"}
                 </Text>
               </>
             )}
@@ -415,11 +399,6 @@ const styles = StyleSheet.create({
   },
   imageDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.5)" },
   imageDotActive: { backgroundColor: "#fff", width: 18 },
-  discountBadge: {
-    position: "absolute", bottom: 14, left: 14,
-    backgroundColor: Colors.light.error, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
-  },
-  discountText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
 
   contentSection: { padding: 18, gap: 14 },
   tagRow: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -434,52 +413,35 @@ const styles = StyleSheet.create({
   ratingNum: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#F59E0B" },
   reviewCount: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
 
-  priceSection: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  price: { fontSize: 30, fontFamily: "Inter_700Bold", color: Colors.light.text },
-  originalPrice: {
-    fontSize: 18, fontFamily: "Inter_400Regular", color: Colors.light.textMuted, textDecorationLine: "line-through",
-  },
-  savingsBadge: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: "#F0FDF4", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
-  },
-  savingsText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#22C55E" },
-
   variantGroupSection: { gap: 10 },
-  variantGroupHeader: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-  },
-  variantGroupLabel: {
-    fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.light.text,
-  },
+  variantGroupHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  variantGroupLabel: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.light.text },
   variantSelectedLabel: {
-    fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.light.textSecondary,
-    backgroundColor: Colors.light.backgroundSecondary, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2,
+    fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.light.tintDark,
+    backgroundColor: Colors.light.tintUltraLight, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2,
   },
-  variantGrid: {
-    flexDirection: "row", flexWrap: "wrap", gap: 10,
-  },
+  variantGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   variantBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
     borderWidth: 1.5, borderColor: Colors.light.border,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
-    backgroundColor: "#fff", minWidth: 80,
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+    backgroundColor: "#fff",
   },
   variantBtnActive: {
-    borderColor: Colors.light.tint, backgroundColor: Colors.light.tintUltraLight,
-    borderWidth: 2,
+    borderColor: Colors.light.tint, backgroundColor: Colors.light.tintUltraLight, borderWidth: 2,
   },
-  variantBtnImg: {
-    width: 30, height: 30, borderRadius: 6, backgroundColor: Colors.light.border,
-  },
-  variantBtnName: {
-    fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.text,
-  },
+  variantBtnImg: { width: 28, height: 28, borderRadius: 5, backgroundColor: Colors.light.border },
+  variantBtnName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.text },
   variantBtnNameActive: { color: Colors.light.tintDark },
-  variantBtnPrice: {
-    fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.light.textSecondary,
+
+  selectionSummary: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    backgroundColor: Colors.light.tintUltraLight, borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: Colors.light.tintLight,
   },
-  variantBtnPriceActive: { color: Colors.light.tint },
+  selectionSummaryText: {
+    flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.light.tintDark, lineHeight: 20,
+  },
 
   stockRow: {
     flexDirection: "row", alignItems: "center", gap: 8,
