@@ -28,9 +28,33 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
 const BANNERS = [
-  { id: "1", title: "Industrial Grade", subtitle: "Pumps & Motors", color: "#0EA5E9", accent: "#BAE6FD", image: "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=600&q=80" },
-  { id: "2", title: "Safety First", subtitle: "Certified Equipment", color: "#F59E0B", accent: "#FDE68A", image: "https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=600&q=80" },
-  { id: "3", title: "Best Prices", subtitle: "Up to 30% off", color: "#22C55E", accent: "#BBF7D0", image: "https://images.unsplash.com/photo-1565043589221-1a6fd9ae45c7?w=600&q=80" },
+  {
+    id: "1",
+    title: "Manufacture & supply",
+    subtitle: "Pumps & Motors",
+    color: "#0EA5E9",
+    accent: "#BAE6FD",
+    image:
+      "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=600&q=80",
+  },
+  {
+    id: "2",
+    title: "Safety First",
+    subtitle: "Certified Equipment",
+    color: "#F59E0B",
+    accent: "#FDE68A",
+    image:
+      "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&q=80",
+  },
+  {
+    id: "3",
+    title: "Best Prices",
+    subtitle: "& Best Services",
+    color: "#22C55E",
+    accent: "#BBF7D0",
+    image:
+      "https://images.unsplash.com/photo-1565043589221-1a6fd9ae45c7?w=600&q=80",
+  },
 ];
 
 interface Product {
@@ -65,7 +89,9 @@ export default function ShopScreen() {
   useEffect(() => {
     fetchData();
     startAutoSlide();
-    return () => { if (autoSlideRef.current) clearInterval(autoSlideRef.current); };
+    return () => {
+      if (autoSlideRef.current) clearInterval(autoSlideRef.current);
+    };
   }, []);
 
   function startAutoSlide() {
@@ -107,7 +133,7 @@ export default function ShopScreen() {
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.brand.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
+          p.category.toLowerCase().includes(q),
       );
     }
     setFilteredProducts(filtered);
@@ -122,18 +148,29 @@ export default function ShopScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Hello, {user?.username?.split(" ")[0] || "User"}</Text>
+          <Text style={styles.greeting}>
+            Hello, {user?.username?.split(" ")[0] || "User"}
+          </Text>
           <Text style={styles.headerTitle}>Gelasha Market Place</Text>
         </View>
-        <Pressable style={styles.notifBtn}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.light.text} />
+        <Pressable style={styles.notifBtn} onPress={() => router.replace("/support")}>
+          <Ionicons
+            name="notifications-outline"
+            size={22}
+            color={Colors.light.text}
+          />
         </Pressable>
       </View>
 
       {/* Search */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
-          <Feather name="search" size={18} color={Colors.light.textMuted} style={styles.searchIcon} />
+          <Feather
+            name="search"
+            size={18}
+            color={Colors.light.textMuted}
+            style={styles.searchIcon}
+          />
           <TextInput
             style={styles.searchInput}
             placeholder="Search products, brands..."
@@ -143,13 +180,20 @@ export default function ShopScreen() {
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={18} color={Colors.light.textMuted} />
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={Colors.light.textMuted}
+              />
             </Pressable>
           )}
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Banners */}
         <View style={styles.bannerSection}>
           <FlatList
@@ -160,25 +204,43 @@ export default function ShopScreen() {
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item.id}
             onMomentumScrollEnd={(e) => {
-              const idx = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 32));
+              const idx = Math.round(
+                e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 32),
+              );
               setBannerIndex(idx);
             }}
             renderItem={({ item }) => (
               <View style={[styles.banner, { backgroundColor: item.color }]}>
                 <View style={styles.bannerContent}>
-                  <View style={[styles.bannerBadge, { backgroundColor: item.accent }]}>
-                    <Text style={[styles.bannerBadgeText, { color: item.color }]}>GELASHA PICKS</Text>
+                  <View
+                    style={[
+                      styles.bannerBadge,
+                      { backgroundColor: item.accent },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.bannerBadgeText, { color: item.color }]}
+                    >
+                      GELASHA PICKS
+                    </Text>
                   </View>
                   <Text style={styles.bannerTitle}>{item.title}</Text>
                   <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
                 </View>
-                <Image source={{ uri: item.image }} style={styles.bannerImage} contentFit="cover" />
+                <Image
+                  source={{ uri: item.image }}
+                  style={styles.bannerImage}
+                  contentFit="cover"
+                />
               </View>
             )}
           />
           <View style={styles.dotContainer}>
             {BANNERS.map((_, i) => (
-              <View key={i} style={[styles.dot, i === bannerIndex && styles.dotActive]} />
+              <View
+                key={i}
+                style={[styles.dot, i === bannerIndex && styles.dotActive]}
+              />
             ))}
           </View>
         </View>
@@ -186,14 +248,29 @@ export default function ShopScreen() {
         {/* Categories */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Categories</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll} contentContainerStyle={styles.categoryContent}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoryScroll}
+            contentContainerStyle={styles.categoryContent}
+          >
             {categories.map((cat) => (
               <Pressable
                 key={cat}
-                style={[styles.categoryChip, activeCategory === cat && styles.categoryChipActive]}
+                style={[
+                  styles.categoryChip,
+                  activeCategory === cat && styles.categoryChipActive,
+                ]}
                 onPress={() => setActiveCategory(cat)}
               >
-                <Text style={[styles.categoryChipText, activeCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    activeCategory === cat && styles.categoryChipTextActive,
+                  ]}
+                >
+                  {cat}
+                </Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -205,21 +282,33 @@ export default function ShopScreen() {
             <Text style={styles.sectionTitle}>
               {activeCategory === "All" ? "All Products" : activeCategory}
             </Text>
-            <Text style={styles.productCount}>{filteredProducts.length} items</Text>
+            <Text style={styles.productCount}>
+              {filteredProducts.length} items
+            </Text>
           </View>
 
           {loading ? (
-            <ActivityIndicator size="large" color={Colors.light.tint} style={{ marginTop: 40 }} />
+            <ActivityIndicator
+              size="large"
+              color={Colors.light.tint}
+              style={{ marginTop: 40 }}
+            />
           ) : filteredProducts.length === 0 ? (
             <View style={styles.emptyState}>
               <Feather name="search" size={48} color={Colors.light.textMuted} />
               <Text style={styles.emptyTitle}>No products found</Text>
-              <Text style={styles.emptySubtitle}>Try a different search or category</Text>
+              <Text style={styles.emptySubtitle}>
+                Try a different search or category
+              </Text>
             </View>
           ) : (
             <View style={styles.productGrid}>
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} onPress={() => router.push(`/product/${product.id}`)} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onPress={() => router.push(`/product/${product.id}`)}
+                />
               ))}
             </View>
           )}
@@ -229,20 +318,36 @@ export default function ShopScreen() {
   );
 }
 
-function ProductCard({ product, onPress }: { product: Product; onPress: () => void }) {
+function ProductCard({
+  product,
+  onPress,
+}: {
+  product: Product;
+  onPress: () => void;
+}) {
   const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
     <Pressable
-      onPressIn={() => { scale.value = withTiming(0.97, { duration: 100 }); }}
-      onPressOut={() => { scale.value = withTiming(1, { duration: 100 }); }}
+      onPressIn={() => {
+        scale.value = withTiming(0.97, { duration: 100 });
+      }}
+      onPressOut={() => {
+        scale.value = withTiming(1, { duration: 100 });
+      }}
       onPress={onPress}
       style={styles.productCardWrapper}
     >
       <Animated.View style={[styles.productCard, animatedStyle]}>
         <View style={styles.productImageContainer}>
-          <Image source={{ uri: product.imageUrl }} style={styles.productImage} contentFit="cover" />
+          <Image
+            source={{ uri: product.imageUrl }}
+            style={styles.productImage}
+            contentFit="cover"
+          />
           {!product.inStock && (
             <View style={styles.outOfStockOverlay}>
               <Text style={styles.outOfStockOverlayText}>Out of Stock</Text>
@@ -251,10 +356,14 @@ function ProductCard({ product, onPress }: { product: Product; onPress: () => vo
         </View>
         <View style={styles.productInfo}>
           <Text style={styles.productBrand}>{product.brand}</Text>
-          <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
+          <Text style={styles.productName} numberOfLines={2}>
+            {product.name}
+          </Text>
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={11} color="#F59E0B" />
-            <Text style={styles.ratingText}>{product.rating} ({product.reviewCount})</Text>
+            <Text style={styles.ratingText}>
+              {product.rating} ({product.reviewCount})
+            </Text>
           </View>
           <Text style={styles.tapToView}>Tap to view details</Text>
         </View>
@@ -502,7 +611,9 @@ const styles = StyleSheet.create({
   },
   outOfStockOverlay: {
     position: "absolute",
-    bottom: 0, left: 0, right: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: "rgba(0,0,0,0.45)",
     paddingVertical: 4,
     alignItems: "center",
