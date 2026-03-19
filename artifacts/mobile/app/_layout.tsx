@@ -8,7 +8,14 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import * as Notifications from "expo-notifications";
+import {
+  addNotificationResponseReceivedListener,
+  getPermissionsAsync,
+  requestPermissionsAsync,
+  scheduleNotificationAsync,
+  setNotificationHandler,
+  type EventSubscription,
+} from "expo-notifications";
 import { Platform } from "react-native";
 import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -21,7 +28,7 @@ import { CartProvider } from "@/context/CartContext";
 
 SplashScreen.preventAutoHideAsync();
 
-Notifications.setNotificationHandler({
+setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
@@ -37,11 +44,11 @@ const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 const LAST_ORDER_KEY = "operator_last_order_ts";
 const POLL_INTERVAL_MS = 30000;
 
-async function requestNotificationPermission() {
+async function requestLocalPermission() {
   if (Platform.OS === "web") return false;
-  const { status: existing } = await Notifications.getPermissionsAsync();
+  const { status: existing } = await getPermissionsAsync();
   if (existing === "granted") return true;
-  const { status } = await Notifications.requestPermissionsAsync();
+  const { status } = await requestPermissionsAsync();
   return status === "granted";
 }
 
@@ -62,7 +69,7 @@ async function checkForNewOrders() {
 
     if (new Date(latestTs) > new Date(storedTs)) {
       await AsyncStorage.setItem(LAST_ORDER_KEY, latestTs);
-      await Notifications.scheduleNotificationAsync({
+      await scheduleNotificationAsync({
         content: {
           title: "New Purchase Order",
           body: "You received a new purchase order.",
@@ -80,7 +87,7 @@ async function checkForNewOrders() {
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<EventSubscription | null>(null);
 
   useEffect(() => {
     if (!isLoading) {
@@ -95,7 +102,7 @@ function RootLayoutNav() {
   useEffect(() => {
     if (!user || user.role !== "operator") return;
 
-    requestNotificationPermission().then((granted) => {
+    requestLocalPermission().then((granted) => {
       if (!granted) return;
       checkForNewOrders();
       pollRef.current = setInterval(checkForNewOrders, POLL_INTERVAL_MS);
@@ -107,14 +114,12 @@ function RootLayoutNav() {
   }, [user]);
 
   useEffect(() => {
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data as { screen?: string };
-        if (data?.screen === "operator/orders") {
-          router.push("/operator/orders");
-        }
+    responseListener.current = addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as { screen?: string };
+      if (data?.screen === "operator/orders") {
+        router.push("/operator/orders");
       }
-    );
+    });
     return () => {
       responseListener.current?.remove();
     };

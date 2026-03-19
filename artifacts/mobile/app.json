@@ -17,7 +17,7 @@
       "supportsTablet": false
     },
     "android": {
-      "permissions": ["NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED", "VIBRATE"]
+      "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "POST_NOTIFICATIONS"]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -30,15 +30,7 @@
         }
       ],
       "expo-font",
-      "expo-web-browser",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/icon.png",
-          "color": "#ffffff",
-          "sounds": []
-        }
-      ]
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
