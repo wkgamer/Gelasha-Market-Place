@@ -16,6 +16,7 @@ export const usersTable = pgTable("users", {
   appUsage: text("app_usage"),
   fuelType: text("fuel_type"),
   role: varchar("role", { length: 20 }).notNull().default("customer"),
+  pushToken: text("push_token"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

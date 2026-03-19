@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, ordersTable, productsTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { sendPushNotifications } from "../lib/sendPushNotifications";
 
 const router: IRouter = Router();
 
@@ -149,6 +150,22 @@ router.post("/", async (req, res) => {
     });
 
     const order = (await db.select().from(ordersTable).where(eq(ordersTable.id, id)))[0];
+
+    const operators = await db
+      .select({ pushToken: usersTable.pushToken })
+      .from(usersTable)
+      .where(eq(usersTable.role, "operator"));
+
+    const tokens = operators
+      .map((o) => o.pushToken)
+      .filter((t): t is string => !!t);
+
+    sendPushNotifications(
+      tokens,
+      "New Purchase Order",
+      "You received a new purchase order.",
+      { screen: "operator/orders" }
+    );
 
     res.json({
       id: order.id,
