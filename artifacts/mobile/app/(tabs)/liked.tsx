@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Heart, Star } from "lucide-react-native";
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -60,10 +60,6 @@ export default function LikedScreen() {
     }
   }
 
-  function formatPrice(price: number) {
-    return `₹${price.toLocaleString("en-IN")}`;
-  }
-
   async function removeLike(productId: string) {
     if (!user) return;
     setProducts((prev) => prev.filter((p) => p.id !== productId));
@@ -91,7 +87,7 @@ export default function LikedScreen() {
       ) : products.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIcon}>
-            <Ionicons name="heart-outline" size={52} color={Colors.light.textMuted} />
+            <Heart size={52} color={Colors.light.textMuted} />
           </View>
           <Text style={styles.emptyTitle}>Your wishlist is empty</Text>
           <Text style={styles.emptySubtitle}>Tap the heart on any product to save it here</Text>
@@ -112,7 +108,7 @@ export default function LikedScreen() {
                 <Text style={styles.cardBrand}>{item.brand}</Text>
                 <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
                 <View style={styles.cardRating}>
-                  <Ionicons name="star" size={12} color="#F59E0B" />
+                  <Star size={12} color="#F59E0B" fill="#F59E0B" />
                   <Text style={styles.ratingText}>{item.rating} ({item.reviewCount})</Text>
                 </View>
                 {!item.inStock && (
@@ -122,7 +118,7 @@ export default function LikedScreen() {
                 )}
               </View>
               <Pressable style={styles.removeBtn} onPress={() => removeLike(item.id)}>
-                <Ionicons name="heart" size={22} color={Colors.light.error} />
+                <Heart size={22} color={Colors.light.error} fill={Colors.light.error} />
               </Pressable>
             </Pressable>
           )}
@@ -135,8 +131,7 @@ export default function LikedScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.backgroundSecondary },
   header: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 16, paddingBottom: 16,
+    backgroundColor: "#fff", paddingHorizontal: 16, paddingBottom: 16,
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight,
   },
@@ -157,15 +152,9 @@ const styles = StyleSheet.create({
   outOfStockText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.light.error },
   removeBtn: { padding: 12, justifyContent: "flex-start", alignItems: "center" },
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 40 },
-  emptyIcon: {
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: Colors.light.backgroundSecondary, alignItems: "center", justifyContent: "center", marginBottom: 8,
-  },
+  emptyIcon: { width: 90, height: 90, borderRadius: 45, backgroundColor: Colors.light.backgroundSecondary, alignItems: "center", justifyContent: "center", marginBottom: 8 },
   emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.light.text },
   emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary, textAlign: "center" },
-  shopBtn: {
-    backgroundColor: Colors.light.tint, borderRadius: 12,
-    paddingVertical: 14, paddingHorizontal: 32, marginTop: 8,
-  },
+  shopBtn: { backgroundColor: Colors.light.tint, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
   shopBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
 });

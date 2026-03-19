@@ -1,4 +1,7 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  ArrowLeft, RefreshCw, PackageCheck, ChevronRight, X,
+  User, Mail, Phone, Building2, MapPin, Truck, CreditCard, FileText,
+} from "lucide-react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -27,6 +30,13 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string }
   cancelled: { color: "#EF4444", bg: "#FEF2F2", label: "Cancelled" },
 };
 
+interface OrderVariant {
+  id: string;
+  name: string;
+  price: number;
+  group?: string;
+}
+
 interface ClientInfo {
   id: string;
   username: string;
@@ -47,11 +57,22 @@ interface Order {
   quantity: number;
   totalPrice: number;
   status: string;
+  variants: OrderVariant[];
   createdAt: string;
   isNew?: boolean;
 }
 
-const LAST_SEEN_KEY = "operator_orders_last_seen";
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  account: User,
+  "email-outline": Mail,
+  phone: Phone,
+  "phone-outline": Phone,
+  "office-building": Building2,
+  "map-marker": MapPin,
+  truck: Truck,
+  "card-text": CreditCard,
+  "text-box-outline": FileText,
+};
 
 export default function OperatorOrdersScreen() {
   const insets = useSafeAreaInsets();
@@ -61,7 +82,6 @@ export default function OperatorOrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [seenAt, setSeenAt] = useState<string>(new Date(0).toISOString());
 
   useFocusEffect(
     useCallback(() => {
@@ -75,7 +95,6 @@ export default function OperatorOrdersScreen() {
       const res = await fetch(`${API_BASE}/orders/all`);
       const data: Order[] = await res.json();
       setOrders(Array.isArray(data) ? data : []);
-      setSeenAt(new Date().toISOString());
     } catch (e) {
       console.log("Error fetching all orders", e);
     } finally {
@@ -89,24 +108,21 @@ export default function OperatorOrdersScreen() {
 
   function formatDateTime(dateStr: string) {
     const d = new Date(dateStr);
-    return d.toLocaleString("en-IN", {
-      day: "numeric", month: "short", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
+    return d.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   }
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color={Colors.light.text} />
+          <ArrowLeft size={22} color={Colors.light.text} />
         </Pressable>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>All Purchase Orders</Text>
           <Text style={styles.headerSub}>{orders.length} total orders</Text>
         </View>
         <Pressable style={styles.refreshBtn} onPress={fetchOrders}>
-          <MaterialCommunityIcons name="refresh" size={22} color={Colors.light.tint} />
+          <RefreshCw size={22} color={Colors.light.tint} />
         </Pressable>
       </View>
 
@@ -114,7 +130,7 @@ export default function OperatorOrdersScreen() {
         <ActivityIndicator size="large" color={Colors.light.tint} style={{ marginTop: 60 }} />
       ) : orders.length === 0 ? (
         <View style={styles.emptyState}>
-          <MaterialCommunityIcons name="package-variant-closed" size={60} color={Colors.light.textMuted} />
+          <PackageCheck size={60} color={Colors.light.textMuted} />
           <Text style={styles.emptyTitle}>No orders yet</Text>
           <Text style={styles.emptySub}>Purchase orders from clients will appear here</Text>
         </View>
@@ -128,6 +144,7 @@ export default function OperatorOrdersScreen() {
           refreshing={loading}
           renderItem={({ item }) => {
             const statusCfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.confirmed;
+            const variantList = item.variants || [];
             return (
               <Pressable style={styles.orderCard} onPress={() => setSelectedOrder(item)}>
                 <View style={styles.orderTop}>
@@ -147,17 +164,20 @@ export default function OperatorOrdersScreen() {
                   <View style={styles.orderMid}>
                     <Text style={styles.productName} numberOfLines={1}>{item.product?.name || "Unknown Product"}</Text>
                     <Text style={styles.productMeta}>{item.product?.category} · Qty: {item.quantity}</Text>
-                    <Text style={styles.clientName}>{item.client?.username || "Unknown Client"}</Text>
-                    {item.client?.siteName && (
-                      <Text style={styles.clientSite}>{item.client.siteName}</Text>
+                    {variantList.length > 0 && (
+                      <Text style={styles.variantSummary}>
+                        {variantList.map((v) => v.name).join(" · ")}
+                      </Text>
                     )}
+                    <Text style={styles.clientName}>{item.client?.username || "Unknown Client"}</Text>
+                    {item.client?.siteName && <Text style={styles.clientSite}>{item.client.siteName}</Text>}
                   </View>
                   <Text style={styles.totalPrice}>{formatPrice(item.totalPrice)}</Text>
                 </View>
 
                 <View style={styles.viewDetails}>
                   <Text style={styles.viewDetailsText}>Tap to see full client & order details</Text>
-                  <Ionicons name="chevron-forward" size={14} color={Colors.light.tint} />
+                  <ChevronRight size={14} color={Colors.light.tint} />
                 </View>
               </Pressable>
             );
@@ -170,14 +190,13 @@ export default function OperatorOrdersScreen() {
           <View style={[styles.detailModal, { paddingTop: Platform.OS === "ios" ? 16 : 24 }]}>
             <View style={styles.detailHeader}>
               <Pressable onPress={() => setSelectedOrder(null)}>
-                <Ionicons name="close" size={24} color={Colors.light.text} />
+                <X size={24} color={Colors.light.text} />
               </Pressable>
               <Text style={styles.detailTitle}>Order Details</Text>
               <View style={{ width: 24 }} />
             </View>
 
             <ScrollView contentContainerStyle={styles.detailBody} showsVerticalScrollIndicator={false}>
-              {/* Order Info */}
               <View style={styles.detailSection}>
                 <Text style={styles.detailSectionTitle}>Order Information</Text>
                 <DetailRow label="Order ID" value={`#${selectedOrder.id.slice(-8).toUpperCase()}`} />
@@ -187,7 +206,21 @@ export default function OperatorOrdersScreen() {
                 <DetailRow label="Total Amount" value={formatPrice(selectedOrder.totalPrice)} />
               </View>
 
-              {/* Product Info */}
+              {(selectedOrder.variants || []).length > 0 && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailSectionTitle}>Selected Variants</Text>
+                  <View style={styles.variantChips}>
+                    {selectedOrder.variants.map((v, i) => (
+                      <View key={i} style={styles.variantChip}>
+                        <Text style={styles.variantChipText}>
+                          {v.group ? `${v.group}: ` : ""}{v.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
               {selectedOrder.product && (
                 <View style={styles.detailSection}>
                   <Text style={styles.detailSectionTitle}>Product Ordered</Text>
@@ -203,7 +236,6 @@ export default function OperatorOrdersScreen() {
                 </View>
               )}
 
-              {/* Client Info */}
               {selectedOrder.client && (
                 <View style={styles.detailSection}>
                   <Text style={styles.detailSectionTitle}>Client Information</Text>
@@ -219,7 +251,7 @@ export default function OperatorOrdersScreen() {
                   {selectedOrder.client.gstNumber && <DetailRow icon="card-text" label="GST Number" value={selectedOrder.client.gstNumber} />}
                   {selectedOrder.client.appUsage && (
                     <View style={styles.notesRow}>
-                      <MaterialCommunityIcons name="text-box-outline" size={16} color={Colors.light.textMuted} />
+                      <FileText size={16} color={Colors.light.textMuted} />
                       <View style={styles.notesContent}>
                         <Text style={styles.detailLabel}>Requirements / Notes</Text>
                         <Text style={styles.notesValue}>{selectedOrder.client.appUsage}</Text>
@@ -239,13 +271,10 @@ export default function OperatorOrdersScreen() {
 }
 
 function DetailRow({ label, value, icon }: { label: string; value: string; icon?: string }) {
+  const IconComp = icon ? ICON_MAP[icon] : null;
   return (
     <View style={styles.detailRow}>
-      {icon ? (
-        <MaterialCommunityIcons name={icon as any} size={16} color={Colors.light.textMuted} />
-      ) : (
-        <View style={{ width: 16 }} />
-      )}
+      {IconComp ? <IconComp size={16} color={Colors.light.textMuted} /> : <View style={{ width: 16 }} />}
       <View style={styles.detailRowContent}>
         <Text style={styles.detailLabel}>{label}</Text>
         <Text style={styles.detailValue}>{value}</Text>
@@ -256,73 +285,50 @@ function DetailRow({ label, value, icon }: { label: string; value: string; icon?
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.backgroundSecondary },
-  header: {
-    backgroundColor: "#fff", flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 16, paddingBottom: 14, gap: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight,
-  },
+  header: { backgroundColor: "#fff", flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight },
   backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   headerCenter: { flex: 1 },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.light.text },
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
-  refreshBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.light.tintUltraLight, alignItems: "center", justifyContent: "center",
-  },
+  refreshBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.light.tintUltraLight, alignItems: "center", justifyContent: "center" },
   listContent: { padding: 16, gap: 12 },
-  orderCard: {
-    backgroundColor: "#fff", borderRadius: 16, padding: 14,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-    gap: 10,
-  },
+  orderCard: { backgroundColor: "#fff", borderRadius: 16, padding: 14, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3, gap: 10 },
   orderTop: { gap: 2 },
   orderIdRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   orderId: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.light.text },
   statusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   orderDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.light.textMuted },
-  orderBody: { flexDirection: "row", alignItems: "center", gap: 12 },
-  productImg: {
-    width: 64, height: 64, borderRadius: 10, backgroundColor: Colors.light.backgroundSecondary,
-  },
+  orderBody: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  productImg: { width: 64, height: 64, borderRadius: 10, backgroundColor: Colors.light.backgroundSecondary },
   orderMid: { flex: 1, gap: 2 },
   productName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.text },
   productMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
+  variantSummary: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.light.tintDark, marginTop: 2 },
   clientName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.tint, marginTop: 4 },
   clientSite: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
   totalPrice: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.light.text },
-  viewDetails: {
-    flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4,
-    paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.light.borderLight,
-  },
+  viewDetails: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.light.borderLight },
   viewDetailsText: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.light.tint },
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.light.text },
   emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary, textAlign: "center" },
-
   detailModal: { flex: 1, backgroundColor: "#fff" },
-  detailHeader: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight,
-  },
+  detailHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight },
   detailTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.light.text },
   detailBody: { padding: 20, gap: 20 },
   detailSection: { gap: 12 },
-  detailSectionTitle: {
-    fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.light.textSecondary,
-    textTransform: "uppercase", letterSpacing: 0.5,
-    paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight,
-  },
+  detailSectionTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.light.textSecondary, textTransform: "uppercase", letterSpacing: 0.5, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight },
   detailRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   detailRowContent: { flex: 1, gap: 1 },
   detailLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.light.textMuted, textTransform: "uppercase" },
   detailValue: { fontSize: 14, fontFamily: "Inter_500Medium", color: Colors.light.text },
   notesRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   notesContent: { flex: 1, gap: 4 },
-  notesValue: {
-    fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.light.text,
-    lineHeight: 20, backgroundColor: Colors.light.tintUltraLight, borderRadius: 8, padding: 10,
-  },
+  notesValue: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.light.text, lineHeight: 20, backgroundColor: Colors.light.tintUltraLight, borderRadius: 8, padding: 10 },
+  variantChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  variantChip: { backgroundColor: Colors.light.tintUltraLight, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: Colors.light.tintLight },
+  variantChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.light.tintDark },
   productDetailRow: { flexDirection: "row", gap: 12, alignItems: "center" },
   productDetailImg: { width: 80, height: 80, borderRadius: 12, backgroundColor: Colors.light.backgroundSecondary },
   productDetailInfo: { flex: 1, gap: 3 },

@@ -1,4 +1,7 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  ArrowLeft, Bell, Plus, PackageCheck, ChevronRight,
+  Pencil, Trash2, Folder, ImageOff, X, PlusCircle, Image as ImageIcon,
+} from "lucide-react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useEffect, useState, useCallback } from "react";
@@ -47,14 +50,8 @@ interface Product {
 }
 
 const EMPTY_FORM = {
-  name: "",
-  description: "",
-  price: "",
-  originalPrice: "",
-  category: "",
-  imageUrl: "",
-  brand: "",
-  inStock: true,
+  name: "", description: "", price: "", originalPrice: "",
+  category: "", imageUrl: "", brand: "", inStock: true,
 };
 
 export default function OperatorPanel() {
@@ -130,14 +127,11 @@ export default function OperatorPanel() {
 
   function openEditModal(product: Product) {
     setForm({
-      name: product.name,
-      description: product.description,
+      name: product.name, description: product.description,
       price: String(product.price),
       originalPrice: product.originalPrice ? String(product.originalPrice) : "",
-      category: product.category,
-      imageUrl: product.imageUrl,
-      brand: product.brand,
-      inStock: product.inStock,
+      category: product.category, imageUrl: product.imageUrl,
+      brand: product.brand, inStock: product.inStock,
     });
     setVariants(product.variants || []);
     setNewVariant({ name: "", price: "", image: "", group: "" });
@@ -152,37 +146,22 @@ export default function OperatorPanel() {
       Alert.alert("Missing Fields", "Please fill in Name, Description, Price, Category, Image URL, and Brand.");
       return;
     }
-
     setSaving(true);
     try {
       const payload = {
-        name: form.name.trim(),
-        description: form.description.trim(),
+        name: form.name.trim(), description: form.description.trim(),
         price: parseFloat(form.price),
         originalPrice: form.originalPrice ? parseFloat(form.originalPrice) : undefined,
-        category: form.category.trim(),
-        imageUrl: form.imageUrl.trim(),
+        category: form.category.trim(), imageUrl: form.imageUrl.trim(),
         images: form.imageUrl.trim() ? [form.imageUrl.trim()] : [],
-        brand: form.brand.trim(),
-        inStock: form.inStock,
-        variants,
+        brand: form.brand.trim(), inStock: form.inStock, variants,
       };
-
       let res: Response;
       if (editProduct) {
-        res = await fetch(`${API_BASE}/products/${editProduct.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        res = await fetch(`${API_BASE}/products/${editProduct.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       } else {
-        res = await fetch(`${API_BASE}/products`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        res = await fetch(`${API_BASE}/products`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       }
-
       if (res.ok) {
         setModalVisible(false);
         await fetchAll();
@@ -204,14 +183,10 @@ export default function OperatorPanel() {
       await doDelete(product.id);
       return;
     }
-    Alert.alert(
-      "Delete Product",
-      `Are you sure you want to delete "${product.name}"? This cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => doDelete(product.id) },
-      ]
-    );
+    Alert.alert("Delete Product", `Are you sure you want to delete "${product.name}"? This cannot be undone.`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => doDelete(product.id) },
+    ]);
   }
 
   async function doDelete(id: string) {
@@ -248,17 +223,14 @@ export default function OperatorPanel() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color={Colors.light.text} />
+          <ArrowLeft size={22} color={Colors.light.text} />
         </Pressable>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Operator Panel</Text>
           <Text style={styles.headerSub}>{products.length} products</Text>
         </View>
-        <Pressable
-          style={styles.ordersIconBtn}
-          onPress={() => router.push("/operator/orders")}
-        >
-          <MaterialCommunityIcons name="bell-outline" size={22} color={Colors.light.tint} />
+        <Pressable style={styles.ordersIconBtn} onPress={() => router.push("/operator/orders")}>
+          <Bell size={22} color={Colors.light.tint} />
           {newOrderCount > 0 && (
             <View style={styles.badgeDot}>
               <Text style={styles.badgeText}>{newOrderCount > 9 ? "9+" : newOrderCount}</Text>
@@ -266,13 +238,12 @@ export default function OperatorPanel() {
           )}
         </Pressable>
         <Pressable style={styles.addBtn} onPress={openAddModal}>
-          <Ionicons name="add" size={22} color="#fff" />
+          <Plus size={22} color="#fff" />
         </Pressable>
       </View>
 
-      {/* Orders Banner */}
       <Pressable style={styles.ordersBanner} onPress={() => router.push("/operator/orders")}>
-        <MaterialCommunityIcons name="package-variant-closed" size={22} color={Colors.light.tint} />
+        <PackageCheck size={22} color={Colors.light.tint} />
         <View style={styles.ordersBannerText}>
           <Text style={styles.ordersBannerTitle}>View All Purchase Orders</Text>
           <Text style={styles.ordersBannerSub}>See client details, order history & contact info</Text>
@@ -282,7 +253,7 @@ export default function OperatorPanel() {
             <Text style={styles.ordersBannerBadgeText}>{newOrderCount} new</Text>
           </View>
         )}
-        <Ionicons name="chevron-forward" size={16} color={Colors.light.tint} />
+        <ChevronRight size={16} color={Colors.light.tint} />
       </Pressable>
 
       <View style={styles.tabBar}>
@@ -326,10 +297,10 @@ export default function OperatorPanel() {
               </View>
               <View style={styles.actionBtns}>
                 <Pressable style={styles.editBtn} onPress={() => openEditModal(item)}>
-                  <MaterialCommunityIcons name="pencil-outline" size={16} color={Colors.light.tint} />
+                  <Pencil size={16} color={Colors.light.tint} />
                 </Pressable>
                 <Pressable style={styles.deleteBtn} onPress={() => handleDelete(item)}>
-                  <MaterialCommunityIcons name="trash-can-outline" size={16} color={Colors.light.error} />
+                  <Trash2 size={16} color={Colors.light.error} />
                 </Pressable>
               </View>
             </View>
@@ -343,7 +314,7 @@ export default function OperatorPanel() {
           </View>
           {categories.filter((c) => c !== "All").map((cat) => (
             <View key={cat} style={styles.catRow}>
-              <MaterialCommunityIcons name="folder-outline" size={18} color={Colors.light.tint} />
+              <Folder size={18} color={Colors.light.tint} />
               <Text style={styles.catName}>{cat}</Text>
               <Text style={styles.catCount}>{products.filter((p) => p.category === cat).length} items</Text>
             </View>
@@ -355,15 +326,11 @@ export default function OperatorPanel() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={[styles.modalHeader, { paddingTop: Platform.OS === "ios" ? 16 : 20 }]}>
             <Pressable onPress={() => setModalVisible(false)}>
-              <Ionicons name="close" size={24} color={Colors.light.text} />
+              <X size={24} color={Colors.light.text} />
             </Pressable>
             <Text style={styles.modalTitle}>{editProduct ? "Edit Product" : "Add New Product"}</Text>
             <Pressable style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.saveBtnText}>Save</Text>
-              )}
+              {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save</Text>}
             </Pressable>
           </View>
 
@@ -374,17 +341,13 @@ export default function OperatorPanel() {
             <FormField label="Category *" value={form.category} onChange={(v) => setForm((f) => ({ ...f, category: v }))} placeholder="e.g. Pumps & Motors" />
             <FormField label="Description *" value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} placeholder="Product details and features..." multiline />
 
-            {/* Image URL with preview */}
             <View style={styles.formField}>
               <Text style={styles.formLabel}>Product Image URL *</Text>
               <View style={styles.imageInputRow}>
                 <TextInput
                   style={[styles.formInput, { flex: 1 }]}
                   value={form.imageUrl}
-                  onChangeText={(v) => {
-                    setForm((f) => ({ ...f, imageUrl: v }));
-                    setImagePreviewError(false);
-                  }}
+                  onChangeText={(v) => { setForm((f) => ({ ...f, imageUrl: v })); setImagePreviewError(false); }}
                   placeholder="https://..."
                   placeholderTextColor={Colors.light.textMuted}
                   autoCapitalize="none"
@@ -393,15 +356,8 @@ export default function OperatorPanel() {
                   returnKeyType="done"
                 />
                 {form.imageUrl ? (
-                  <Pressable
-                    style={styles.clearImageBtn}
-                    onPress={() => {
-                      setForm((f) => ({ ...f, imageUrl: "" }));
-                      setPreviewUrl("");
-                      setImagePreviewError(false);
-                    }}
-                  >
-                    <MaterialCommunityIcons name="close-circle" size={20} color={Colors.light.error} />
+                  <Pressable style={styles.clearImageBtn} onPress={() => { setForm((f) => ({ ...f, imageUrl: "" })); setPreviewUrl(""); setImagePreviewError(false); }}>
+                    <X size={20} color={Colors.light.error} />
                   </Pressable>
                 ) : null}
               </View>
@@ -409,7 +365,7 @@ export default function OperatorPanel() {
                 <View style={styles.imagePreviewContainer}>
                   {imagePreviewError ? (
                     <View style={styles.imagePreviewError}>
-                      <MaterialCommunityIcons name="image-broken-variant" size={28} color={Colors.light.textMuted} />
+                      <ImageOff size={28} color={Colors.light.textMuted} />
                       <Text style={styles.imagePreviewErrorText}>Could not load image preview</Text>
                     </View>
                   ) : (
@@ -434,9 +390,7 @@ export default function OperatorPanel() {
                 style={[styles.toggleBtn, form.inStock && styles.toggleBtnActive]}
                 onPress={() => setForm((f) => ({ ...f, inStock: !f.inStock }))}
               >
-                <Text style={[styles.toggleText, form.inStock && styles.toggleTextActive]}>
-                  {form.inStock ? "Yes" : "No"}
-                </Text>
+                <Text style={[styles.toggleText, form.inStock && styles.toggleTextActive]}>{form.inStock ? "Yes" : "No"}</Text>
               </Pressable>
             </View>
 
@@ -451,7 +405,7 @@ export default function OperatorPanel() {
                       <Image source={{ uri: v.image }} style={styles.variantThumb} contentFit="cover" />
                     ) : (
                       <View style={[styles.variantThumb, styles.variantThumbPlaceholder]}>
-                        <MaterialCommunityIcons name="image-outline" size={16} color={Colors.light.textMuted} />
+                        <ImageIcon size={16} color={Colors.light.textMuted} />
                       </View>
                     )}
                     <View style={styles.variantRowInfo}>
@@ -460,7 +414,7 @@ export default function OperatorPanel() {
                       <Text style={styles.variantRowPrice}>{formatPrice(v.price)}</Text>
                     </View>
                     <Pressable style={styles.removeVariantBtn} onPress={() => removeVariant(v.id)}>
-                      <Ionicons name="close-circle" size={20} color={Colors.light.error} />
+                      <X size={20} color={Colors.light.error} />
                     </Pressable>
                   </View>
                 ))}
@@ -469,38 +423,16 @@ export default function OperatorPanel() {
 
             <View style={styles.addVariantSection}>
               <Text style={styles.addVariantTitle}>Add Variant</Text>
-              <FormField
-                label="Group Name (Optional)"
-                value={newVariant.group}
-                onChange={(v) => setNewVariant((n) => ({ ...n, group: v }))}
-                placeholder="e.g. Pack Size, Grade, HP Rating"
-              />
-              <FormField
-                label="Variant Name *"
-                value={newVariant.name}
-                onChange={(v) => setNewVariant((n) => ({ ...n, name: v }))}
-                placeholder="e.g. 5 Litre, Standard, 2HP"
-              />
-              <FormField
-                label="Variant Price ₹ *"
-                value={newVariant.price}
-                onChange={(v) => setNewVariant((n) => ({ ...n, price: v }))}
-                placeholder="e.g. 2500"
-                keyboardType="decimal-pad"
-              />
-              <FormField
-                label="Variant Image URL (Optional)"
-                value={newVariant.image}
-                onChange={(v) => setNewVariant((n) => ({ ...n, image: v }))}
-                placeholder="https://... (tapping variant shows this image)"
-                autoCapitalize="none"
-              />
+              <FormField label="Group Name (Optional)" value={newVariant.group} onChange={(v) => setNewVariant((n) => ({ ...n, group: v }))} placeholder="e.g. Pack Size, Grade, HP Rating" />
+              <FormField label="Variant Name *" value={newVariant.name} onChange={(v) => setNewVariant((n) => ({ ...n, name: v }))} placeholder="e.g. 5 Litre, Standard, 2HP" />
+              <FormField label="Variant Price ₹ *" value={newVariant.price} onChange={(v) => setNewVariant((n) => ({ ...n, price: v }))} placeholder="e.g. 2500" keyboardType="decimal-pad" />
+              <FormField label="Variant Image URL (Optional)" value={newVariant.image} onChange={(v) => setNewVariant((n) => ({ ...n, image: v }))} placeholder="https://... (tapping variant shows this image)" autoCapitalize="none" />
               <Pressable
                 style={[styles.addVariantBtn, (!newVariant.name.trim() || !newVariant.price) && { opacity: 0.5 }]}
                 onPress={addVariant}
                 disabled={!newVariant.name.trim() || !newVariant.price}
               >
-                <Ionicons name="add-circle-outline" size={18} color={Colors.light.tint} />
+                <PlusCircle size={18} color={Colors.light.tint} />
                 <Text style={styles.addVariantBtnText}>Add This Variant</Text>
               </Pressable>
             </View>
@@ -513,16 +445,9 @@ export default function OperatorPanel() {
   );
 }
 
-function FormField({
-  label, value, onChange, placeholder, multiline, keyboardType, autoCapitalize
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  multiline?: boolean;
-  keyboardType?: any;
-  autoCapitalize?: any;
+function FormField({ label, value, onChange, placeholder, multiline, keyboardType, autoCapitalize }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder: string;
+  multiline?: boolean; keyboardType?: any; autoCapitalize?: any;
 }) {
   return (
     <View style={styles.formField}>
@@ -545,60 +470,28 @@ function FormField({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.backgroundSecondary },
-  header: {
-    backgroundColor: "#fff", flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 16, paddingBottom: 14, gap: 10,
-    borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight,
-  },
+  header: { backgroundColor: "#fff", flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 14, gap: 10, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight },
   backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   headerCenter: { flex: 1 },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.light.text },
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
-  ordersIconBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.light.tintUltraLight, alignItems: "center", justifyContent: "center",
-    position: "relative",
-  },
-  badgeDot: {
-    position: "absolute", top: -2, right: -2, minWidth: 18, height: 18,
-    backgroundColor: Colors.light.error, borderRadius: 9, alignItems: "center", justifyContent: "center",
-    paddingHorizontal: 3, borderWidth: 1.5, borderColor: "#fff",
-  },
+  ordersIconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.light.tintUltraLight, alignItems: "center", justifyContent: "center", position: "relative" },
+  badgeDot: { position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, backgroundColor: Colors.light.error, borderRadius: 9, alignItems: "center", justifyContent: "center", paddingHorizontal: 3, borderWidth: 1.5, borderColor: "#fff" },
   badgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff" },
   addBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.light.tint, alignItems: "center", justifyContent: "center" },
-
-  ordersBanner: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: Colors.light.tintUltraLight, marginHorizontal: 16, marginTop: 12, marginBottom: 4,
-    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
-    borderWidth: 1, borderColor: Colors.light.tintLight,
-  },
+  ordersBanner: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: Colors.light.tintUltraLight, marginHorizontal: 16, marginTop: 12, marginBottom: 4, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: Colors.light.tintLight },
   ordersBannerText: { flex: 1 },
   ordersBannerTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.light.tintDark },
   ordersBannerSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.light.tint, marginTop: 1 },
-  ordersBannerBadge: {
-    backgroundColor: Colors.light.error, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
-  },
+  ordersBannerBadge: { backgroundColor: Colors.light.error, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   ordersBannerBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
-
-  tabBar: {
-    flexDirection: "row", backgroundColor: "#fff",
-    paddingHorizontal: 16, paddingBottom: 12, paddingTop: 12, gap: 8,
-    borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight,
-  },
-  tabBtn: {
-    paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: Colors.light.backgroundSecondary, borderWidth: 1.5, borderColor: Colors.light.border,
-  },
+  tabBar: { flexDirection: "row", backgroundColor: "#fff", paddingHorizontal: 16, paddingBottom: 12, paddingTop: 12, gap: 8, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight },
+  tabBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: Colors.light.backgroundSecondary, borderWidth: 1.5, borderColor: Colors.light.border },
   tabBtnActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
   tabText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.textSecondary },
   tabTextActive: { color: "#fff" },
   listContent: { padding: 16, gap: 10 },
-  productRow: {
-    backgroundColor: "#fff", borderRadius: 14, flexDirection: "row",
-    alignItems: "center", padding: 12, gap: 12,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-  },
+  productRow: { backgroundColor: "#fff", borderRadius: 14, flexDirection: "row", alignItems: "center", padding: 12, gap: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   productThumb: { width: 70, height: 70, borderRadius: 10, backgroundColor: Colors.light.backgroundSecondary },
   productInfo: { flex: 1, gap: 3 },
   productName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.light.text },
@@ -612,74 +505,37 @@ const styles = StyleSheet.create({
   actionBtns: { gap: 8, alignItems: "center" },
   editBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.light.tintUltraLight, alignItems: "center", justifyContent: "center" },
   deleteBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: "#FEF2F2", alignItems: "center", justifyContent: "center" },
-
   catHeader: { marginBottom: 8, gap: 6 },
   catTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.light.text },
   catSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary, lineHeight: 20 },
-  catRow: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "#fff", borderRadius: 12, padding: 14,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
-  },
+  catRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderRadius: 12, padding: 14, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
   catName: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.light.text },
   catCount: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
-
-  modalHeader: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 20, paddingBottom: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight, backgroundColor: "#fff",
-  },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight, backgroundColor: "#fff" },
   modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.light.text },
-  saveBtn: {
-    backgroundColor: Colors.light.tint, borderRadius: 10,
-    paddingHorizontal: 18, paddingVertical: 8, minWidth: 60, alignItems: "center",
-  },
+  saveBtn: { backgroundColor: Colors.light.tint, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 8, minWidth: 60, alignItems: "center" },
   saveBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
   modalBody: { backgroundColor: "#fff", padding: 20 },
-  formSection: {
-    fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.light.text,
-    marginTop: 20, marginBottom: 12, paddingBottom: 8,
-    borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight,
-  },
+  formSection: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.light.text, marginTop: 20, marginBottom: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: Colors.light.borderLight },
   formHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary, marginBottom: 14, lineHeight: 18 },
   formField: { marginBottom: 14, gap: 6 },
   formLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.text },
-  formInput: {
-    borderWidth: 1.5, borderColor: Colors.light.border, borderRadius: 10,
-    paddingHorizontal: 14, height: 48, fontSize: 14, fontFamily: "Inter_400Regular",
-    color: Colors.light.text, backgroundColor: Colors.light.backgroundSecondary,
-  },
+  formInput: { borderWidth: 1.5, borderColor: Colors.light.border, borderRadius: 10, paddingHorizontal: 14, height: 48, fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.light.text, backgroundColor: Colors.light.backgroundSecondary },
   formInputMulti: { height: 90, paddingTop: 12, textAlignVertical: "top" },
-
   imageInputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   clearImageBtn: { padding: 4 },
-  imagePreviewContainer: {
-    marginTop: 8, borderRadius: 10, overflow: "hidden",
-    borderWidth: 1.5, borderColor: Colors.light.border, height: 160,
-    backgroundColor: Colors.light.backgroundSecondary,
-  },
+  imagePreviewContainer: { marginTop: 8, borderRadius: 10, overflow: "hidden", borderWidth: 1.5, borderColor: Colors.light.border, height: 160, backgroundColor: Colors.light.backgroundSecondary },
   imagePreview: { width: "100%", height: "100%" },
-  imagePreviewError: {
-    flex: 1, alignItems: "center", justifyContent: "center", gap: 6,
-  },
+  imagePreviewError: { flex: 1, alignItems: "center", justifyContent: "center", gap: 6 },
   imagePreviewErrorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.light.textMuted },
-
   stockToggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
   stockToggleLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.text },
-  toggleBtn: {
-    paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20,
-    borderWidth: 1.5, borderColor: Colors.light.border, backgroundColor: Colors.light.backgroundSecondary,
-  },
+  toggleBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: Colors.light.border, backgroundColor: Colors.light.backgroundSecondary },
   toggleBtnActive: { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint },
   toggleText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.textSecondary },
   toggleTextActive: { color: "#fff" },
-
   variantList: { gap: 8, marginBottom: 16 },
-  variantRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: Colors.light.backgroundSecondary, borderRadius: 10, padding: 10,
-    borderWidth: 1, borderColor: Colors.light.borderLight,
-  },
+  variantRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: Colors.light.backgroundSecondary, borderRadius: 10, padding: 10, borderWidth: 1, borderColor: Colors.light.borderLight },
   variantThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: Colors.light.border },
   variantThumbPlaceholder: { alignItems: "center", justifyContent: "center" },
   variantRowInfo: { flex: 1 },
@@ -687,16 +543,8 @@ const styles = StyleSheet.create({
   variantRowName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.light.text },
   variantRowPrice: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.light.textSecondary },
   removeVariantBtn: { padding: 4 },
-
-  addVariantSection: {
-    backgroundColor: Colors.light.tintUltraLight, borderRadius: 12,
-    padding: 14, borderWidth: 1, borderColor: Colors.light.tintLight, gap: 4,
-  },
+  addVariantSection: { backgroundColor: Colors.light.tintUltraLight, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.light.tintLight, gap: 4 },
   addVariantTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.light.tintDark, marginBottom: 8 },
-  addVariantBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    borderWidth: 1.5, borderColor: Colors.light.tint, borderRadius: 10,
-    paddingVertical: 10, marginTop: 4, backgroundColor: "#fff",
-  },
+  addVariantBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1.5, borderColor: Colors.light.tint, borderRadius: 10, paddingVertical: 10, marginTop: 4, backgroundColor: "#fff" },
   addVariantBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.light.tint },
 });

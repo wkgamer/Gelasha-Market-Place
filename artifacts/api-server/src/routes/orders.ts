@@ -23,6 +23,7 @@ function formatProduct(p: typeof productsTable.$inferSelect) {
     inStock: p.inStock,
     brand: p.brand,
     discount: p.discount || 0,
+    variants: p.variants || [],
   };
 }
 
@@ -64,6 +65,8 @@ router.get("/all", async (req, res) => {
           quantity: order.quantity,
           totalPrice: parseFloat(order.totalPrice as string),
           status: order.status,
+          variants: order.variants || [],
+          notes: order.notes || null,
           createdAt: order.createdAt.toISOString(),
         };
       })
@@ -101,6 +104,8 @@ router.get("/", async (req, res) => {
           quantity: order.quantity,
           totalPrice: parseFloat(order.totalPrice as string),
           status: order.status,
+          variants: order.variants || [],
+          notes: order.notes || null,
           createdAt: order.createdAt.toISOString(),
         };
       })
@@ -115,7 +120,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { userId, productId, quantity } = req.body;
+    const { userId, productId, quantity, variants, notes } = req.body;
     if (!userId || !productId) {
       return res.status(400).json({ error: "Missing required fields" });
     }
@@ -139,6 +144,8 @@ router.post("/", async (req, res) => {
       quantity: qty,
       totalPrice: totalPrice.toFixed(2),
       status: "confirmed",
+      variants: variants || [],
+      notes: notes || null,
     });
 
     const order = (await db.select().from(ordersTable).where(eq(ordersTable.id, id)))[0];
@@ -151,6 +158,8 @@ router.post("/", async (req, res) => {
       quantity: order.quantity,
       totalPrice: parseFloat(order.totalPrice as string),
       status: order.status,
+      variants: order.variants || [],
+      notes: order.notes || null,
       createdAt: order.createdAt.toISOString(),
     });
   } catch (err) {
