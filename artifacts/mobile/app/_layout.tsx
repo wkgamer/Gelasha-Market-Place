@@ -8,7 +8,16 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import Constants from "expo-constants";
+import {
+  AndroidImportance,
+  addNotificationResponseReceivedListener,
+  getPermissionsAsync,
+  requestPermissionsAsync,
+  scheduleNotificationAsync,
+  setNotificationChannelAsync,
+  setNotificationHandler,
+  type EventSubscription,
+} from "expo-notifications";
 import { Platform } from "react-native";
 import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -21,28 +30,31 @@ import { CartProvider } from "@/context/CartContext";
 
 SplashScreen.preventAutoHideAsync();
 
-// expo-notifications crashes in Expo Go on SDK 53+.
-// Only load it in a real device build (standalone / dev-client).
-const isExpoGo = Constants.appOwnership === "expo";
+// Suppress the Expo Go SDK 53 warning about remote push notifications
+// so the dev overlay does not appear. Local notifications still work.
+if (__DEV__) {
+  const orig = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    if (
+      typeof args[0] === "string" &&
+      args[0].includes("expo-notifications")
+    ) {
+      return;
+    }
+    orig(...args);
+  };
+}
 
-type NotificationsModule = typeof import("expo-notifications");
-let N: NotificationsModule | null = null;
-
-if (!isExpoGo && Platform.OS !== "web") {
-  try {
-    N = require("expo-notifications") as NotificationsModule;
-    N.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldShowAlert: false,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
-  } catch {
-    N = null;
-  }
+if (Platform.OS !== "web") {
+  setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldShowAlert: false,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
 }
 
 const queryClient = new QueryClient();
@@ -53,11 +65,11 @@ const POLL_INTERVAL_MS = 30000;
 const CHANNEL_ID = "orders";
 
 async function setupAndroidChannel() {
-  if (!N || Platform.OS !== "android") return;
+  if (Platform.OS !== "android") return;
   try {
-    await N.setNotificationChannelAsync(CHANNEL_ID, {
+    await setNotificationChannelAsync(CHANNEL_ID, {
       name: "Order Notifications",
-      importance: N.AndroidImportance.MAX,
+      importance: AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#1a73e8",
       sound: "default",
@@ -68,11 +80,11 @@ async function setupAndroidChannel() {
 }
 
 async function requestPermission(): Promise<boolean> {
-  if (!N || Platform.OS === "web") return false;
+  if (Platform.OS === "web") return false;
   try {
-    const { status: existing } = await N.getPermissionsAsync();
+    const { status: existing } = await getPermissionsAsync();
     if (existing === "granted") return true;
-    const { status } = await N.requestPermissionsAsync();
+    const { status } = await requestPermissionsAsync();
     return status === "granted";
   } catch {
     return false;
@@ -80,9 +92,8 @@ async function requestPermission(): Promise<boolean> {
 }
 
 async function fireNewOrderNotification() {
-  if (!N) return;
   try {
-    await N.scheduleNotificationAsync({
+    await scheduleNotificationAsync({
       content: {
         title: "New Purchase Order",
         body: "You received a new purchase order.",
@@ -119,7 +130,7 @@ async function checkForNewOrders() {
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const responseListenerRef = useRef<{ remove: () => void } | null>(null);
+  const responseListenerRef = useRef<EventSubscription | null>(null);
 
   useEffect(() => {
     if (!isLoading) {
@@ -142,18 +153,16 @@ function RootLayoutNav() {
       })
     );
 
-    if (N) {
-      responseListenerRef.current = N.addNotificationResponseReceivedListener(
-        (response) => {
-          const data = response.notification.request.content.data as {
-            screen?: string;
-          };
-          if (data?.screen === "operator/orders") {
-            router.push("/operator/orders");
-          }
+    responseListenerRef.current = addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as {
+          screen?: string;
+        };
+        if (data?.screen === "operator/orders") {
+          router.push("/operator/orders");
         }
-      );
-    }
+      }
+    );
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
