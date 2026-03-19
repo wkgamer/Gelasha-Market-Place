@@ -13,6 +13,7 @@ import { Platform } from "react-native";
 import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -33,37 +34,52 @@ Notifications.setNotificationHandler({
 const queryClient = new QueryClient();
 
 const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const LAST_ORDER_KEY = "operator_last_order_ts";
+const POLL_INTERVAL_MS = 30000;
 
-async function registerForPushNotifications(userId: string) {
-  if (Platform.OS === "web") return;
+async function requestNotificationPermission() {
+  if (Platform.OS === "web") return false;
+  const { status: existing } = await Notifications.getPermissionsAsync();
+  if (existing === "granted") return true;
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === "granted";
+}
 
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-
-  if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  if (finalStatus !== "granted") return;
-
-  const tokenData = await Notifications.getExpoPushTokenAsync();
-  const pushToken = tokenData.data;
-
+async function checkForNewOrders() {
   try {
-    await fetch(`${API_BASE}/notifications/push-token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, pushToken }),
-    });
+    const res = await fetch(`${API_BASE}/orders/all`);
+    if (!res.ok) return;
+    const orders: { createdAt: string }[] = await res.json();
+    if (orders.length === 0) return;
+
+    const latestTs = orders[0].createdAt;
+    const storedTs = await AsyncStorage.getItem(LAST_ORDER_KEY);
+
+    if (!storedTs) {
+      await AsyncStorage.setItem(LAST_ORDER_KEY, latestTs);
+      return;
+    }
+
+    if (new Date(latestTs) > new Date(storedTs)) {
+      await AsyncStorage.setItem(LAST_ORDER_KEY, latestTs);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "New Purchase Order",
+          body: "You received a new purchase order.",
+          data: { screen: "operator/orders" },
+          sound: true,
+        },
+        trigger: null,
+      });
+    }
   } catch (e) {
-    console.log("Failed to save push token", e);
+    console.log("Order poll error", e);
   }
 }
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
@@ -72,26 +88,34 @@ function RootLayoutNav() {
         router.replace("/(auth)/welcome");
       } else {
         router.replace("/(tabs)");
-        if (user.role === "operator") {
-          registerForPushNotifications(user.id);
-        }
       }
     }
   }, [user, isLoading]);
 
   useEffect(() => {
-    notificationListener.current = Notifications.addNotificationReceivedListener(() => {
-    });
+    if (!user || user.role !== "operator") return;
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data as { screen?: string };
-      if (data?.screen === "operator/orders") {
-        router.push("/operator/orders");
-      }
+    requestNotificationPermission().then((granted) => {
+      if (!granted) return;
+      checkForNewOrders();
+      pollRef.current = setInterval(checkForNewOrders, POLL_INTERVAL_MS);
     });
 
     return () => {
-      notificationListener.current?.remove();
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as { screen?: string };
+        if (data?.screen === "operator/orders") {
+          router.push("/operator/orders");
+        }
+      }
+    );
+    return () => {
       responseListener.current?.remove();
     };
   }, []);
