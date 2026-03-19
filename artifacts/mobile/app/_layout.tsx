@@ -8,7 +8,6 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -21,16 +20,25 @@ import { CartProvider } from "@/context/CartContext";
 
 SplashScreen.preventAutoHideAsync();
 
-if (Platform.OS !== "web") {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
+// Lazy-load expo-notifications using require() so a crash in Expo Go
+// does not prevent the rest of the app from loading.
+type NotificationsModule = typeof import("expo-notifications");
+let N: NotificationsModule | null = null;
+try {
+  N = require("expo-notifications") as NotificationsModule;
+  if (N && Platform.OS !== "web") {
+    N.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldShowAlert: false,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  }
+} catch {
+  N = null;
 }
 
 const queryClient = new QueryClient();
@@ -41,28 +49,26 @@ const POLL_INTERVAL_MS = 30000;
 const CHANNEL_ID = "orders";
 
 async function setupAndroidChannel() {
-  if (Platform.OS !== "android") return;
+  if (!N || Platform.OS !== "android") return;
   try {
-    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+    await N.setNotificationChannelAsync(CHANNEL_ID, {
       name: "Order Notifications",
-      importance: Notifications.AndroidImportance.MAX,
+      importance: N.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#1a73e8",
       sound: "default",
       enableVibrate: true,
       showBadge: true,
     });
-  } catch (e) {
-    console.log("Channel setup error", e);
-  }
+  } catch {}
 }
 
 async function requestPermission(): Promise<boolean> {
-  if (Platform.OS === "web") return false;
+  if (!N || Platform.OS === "web") return false;
   try {
-    const { status: existing } = await Notifications.getPermissionsAsync();
+    const { status: existing } = await N.getPermissionsAsync();
     if (existing === "granted") return true;
-    const { status } = await Notifications.requestPermissionsAsync();
+    const { status } = await N.requestPermissionsAsync();
     return status === "granted";
   } catch {
     return false;
@@ -70,8 +76,9 @@ async function requestPermission(): Promise<boolean> {
 }
 
 async function fireNewOrderNotification() {
+  if (!N) return;
   try {
-    await Notifications.scheduleNotificationAsync({
+    await N.scheduleNotificationAsync({
       content: {
         title: "New Purchase Order",
         body: "You received a new purchase order.",
@@ -80,9 +87,7 @@ async function fireNewOrderNotification() {
       },
       trigger: null,
     });
-  } catch (e) {
-    console.log("Notification error", e);
-  }
+  } catch {}
 }
 
 async function checkForNewOrders() {
@@ -104,15 +109,13 @@ async function checkForNewOrders() {
       await AsyncStorage.setItem(LAST_ORDER_KEY, latestTs);
       await fireNewOrderNotification();
     }
-  } catch (e) {
-    console.log("Order poll error", e);
-  }
+  } catch {}
 }
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const responseListenerRef = useRef<Notifications.EventSubscription | null>(null);
+  const responseListenerRef = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
     if (!isLoading) {
@@ -135,16 +138,18 @@ function RootLayoutNav() {
       })
     );
 
-    responseListenerRef.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data as {
-          screen?: string;
-        };
-        if (data?.screen === "operator/orders") {
-          router.push("/operator/orders");
+    if (N) {
+      responseListenerRef.current = N.addNotificationResponseReceivedListener(
+        (response) => {
+          const data = response.notification.request.content.data as {
+            screen?: string;
+          };
+          if (data?.screen === "operator/orders") {
+            router.push("/operator/orders");
+          }
         }
-      }
-    );
+      );
+    }
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
