@@ -8,6 +8,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import Constants from "expo-constants";
 import {
   AndroidImportance,
   addNotificationResponseReceivedListener,
@@ -30,22 +31,11 @@ import { CartProvider } from "@/context/CartContext";
 
 SplashScreen.preventAutoHideAsync();
 
-// Suppress the Expo Go SDK 53 warning about remote push notifications
-// so the dev overlay does not appear. Local notifications still work.
-if (__DEV__) {
-  const orig = console.error.bind(console);
-  console.error = (...args: unknown[]) => {
-    if (
-      typeof args[0] === "string" &&
-      args[0].includes("expo-notifications")
-    ) {
-      return;
-    }
-    orig(...args);
-  };
-}
+// executionEnvironment === 'expo' means Expo Go.
+// In a standalone APK / dev-client build it is 'storeClient'.
+const isExpoGo = Constants.executionEnvironment === "expo";
 
-if (Platform.OS !== "web") {
+if (!isExpoGo && Platform.OS !== "web") {
   setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: true,
@@ -143,7 +133,7 @@ function RootLayoutNav() {
   }, [user, isLoading]);
 
   useEffect(() => {
-    if (!user || user.role !== "operator" || Platform.OS === "web") return;
+    if (!user || user.role !== "operator" || Platform.OS === "web" || isExpoGo) return;
 
     setupAndroidChannel().then(() =>
       requestPermission().then((granted) => {

@@ -4,33 +4,22 @@
     "appVersionSource": "remote"
   },
   "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleDebug"
-      },
-      "ios": {
-        "simulator": true
-      },
-      "env": {
-        "EXPO_PUBLIC_DOMAIN": ""
-      }
-    },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": ""
+        "EXPO_PUBLIC_DOMAIN": "8b78da15-15f6-4ee8-b886-c95214d831ff-00-cmuoqojrz30c.riker.replit.dev"
       }
     },
     "production": {
       "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": ""
+        "EXPO_PUBLIC_DOMAIN": "8b78da15-15f6-4ee8-b886-c95214d831ff-00-cmuoqojrz30c.riker.replit.dev"
       }
     }
   },
